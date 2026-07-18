@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Use to validate a completed Next.js/Supabase implementation before closing a feature. Checks requirement-to-test traceability, task completeness, conventions, and typecheck/lint/test/build results. Read-only — approves or rejects.
+description: Use to validate a completed React/Vite/Supabase PWA implementation before closing a feature. Checks requirement-to-test traceability, task completeness, conventions, RLS/security posture, and typecheck/lint/test/build results. Read-only — approves or rejects.
 tools: Read, Glob, Grep, Bash
 ---
 
@@ -19,15 +19,18 @@ with specific, actionable findings.
    plus `./init.sh e2e` for user-facing features. Confirm all pass and coverage
    meets the target in `tasks.md`.
 4. **Conventions.** Spot-check against `docs/conventions.md` and
-   `docs/architecture.md`: Server/Client boundary correct, mutations do
-   auth+Zod+authorize, Prisma used server-only via the singleton, no `any`, no
-   leftover `console.log`, only `NEXT_PUBLIC_*` exposed to the client.
-5. **Data & security.** Any schema change has a committed migration and
-   `prisma migrate status` is in sync; authorization is enforced server-side
-   (don't rely on RLS alone for Prisma paths); no secrets committed; new env
-   vars are in `.env.example`.
-6. **Scope discipline.** No model, table, route, env var, or dependency beyond
-   what the spec describes.
+   `docs/architecture.md`: data access only in `services/` over the singleton
+   client, screens with explicit loading/empty/error states, Spanish UI text,
+   kg units, touch targets ≥ 44px, no `any`, no leftover `console.log`.
+5. **Data & security.** Any schema change has a committed migration in
+   `supabase/migrations/` including its RLS policies; the app writes to no
+   table other than `workout_logs`; no service key or non-`VITE_` secret
+   anywhere in the repo; new env vars are in `.env.example`; the `Gym`-repo
+   contract (exercise IDs, `solution_design.md` §3 schema) is intact.
+6. **PWA (when touched).** `pnpm build` emits manifest + service worker; the SW
+   never caches Supabase API (data) responses, only shell + Storage media.
+7. **Scope discipline.** No table, route, env var, or dependency beyond what
+   the spec describes.
 
 ## Output
 

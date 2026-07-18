@@ -17,10 +17,14 @@ A feature is correct only when **all** of the following hold:
       ≥ 80% lines on changed modules).
 - [ ] `pnpm test:e2e` exits 0 for any feature with user-facing flows (skip only
       if the spec has no UI behaviour — state that explicitly).
-- [ ] `pnpm build` exits 0 (catches Server/Client Component boundary errors,
-      serialization issues, and bad imports that unit tests miss).
-- [ ] Any data-model change ships as a Prisma migration in `prisma/migrations/`
-      and applies cleanly to the dev/staging Supabase DB.
+- [ ] `pnpm build` exits 0, and for PWA-affecting features the built `dist/`
+      contains the web manifest and service worker.
+- [ ] Any data-model change ships as a numbered SQL file in
+      `supabase/migrations/` (tables **and** RLS policies) that applies cleanly
+      to the Supabase project and keeps the `Gym`-repo contract intact
+      (`solution_design.md` §3).
+- [ ] The feature writes to no table other than `workout_logs`, and no service
+      key or non-`VITE_` secret appears anywhere in the repo.
 - [ ] No secrets committed; any new env var is documented in `.env.example`.
 - [ ] `progress/review_<feature>.md` contains **APPROVE** from the reviewer.
 - [ ] `feature_list.json` status is set to `done`; summary moved to
@@ -32,7 +36,12 @@ A feature is correct only when **all** of the following hold:
       with a documented reason in `progress/current.md`).
 - [ ] `init.sh` runs end-to-end and exits 0 from a clean checkout
       (after `pnpm install` and a populated `.env.local`).
-- [ ] The app deploys to a Vercel **preview** without build errors.
+- [ ] The app deploys to Vercel/Netlify without build errors and is served over
+      HTTPS.
+- [ ] The deployed app is installable from Safari on iPhone ("Agregar a
+      pantalla de inicio") and opens standalone (no browser chrome).
+- [ ] All user-facing text is Spanish and weights are shown in kg.
+- [ ] Exercise media shows the `© Gym visual` attribution.
 - [ ] No `console.log`/`console.error` debug noise, no `TODO` without an owner
       and context, no dead code or unused exports.
 - [ ] `README` / `.env.example` document how to run the app locally and which
@@ -41,9 +50,9 @@ A feature is correct only when **all** of the following hold:
 ## Quick self-check command
 
 ```
-./init.sh           # install (if needed) → generate → typecheck → lint → test → build
+./init.sh           # install (if needed) → typecheck → lint → test → build
 ```
 
 If `init.sh` exits 0, the per-feature code-quality checkpoints (typecheck, lint,
-test, build) are satisfied. Traceability, migrations, and the review verdict
+test, build) are satisfied. Traceability, migrations/RLS, and the review verdict
 still require the manual checks above.

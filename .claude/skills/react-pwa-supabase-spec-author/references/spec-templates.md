@@ -11,7 +11,7 @@ harness and reviewer rely on them.
 # Requirements — <NN_feature_name>
 
 **Feature:** <one-line name>
-**Source:** <source doc + section refs, e.g. PRD §3, design §2.1>
+**Source:** <source doc + section refs, e.g. client_requirement RF-4, solution_design §4.1>
 **Depends on:** <comma-separated feature names, or "none (foundation layer)">
 
 ## Purpose
@@ -20,8 +20,8 @@ harness and reviewer rely on them.
 
 ## In scope
 
-- <concrete artifacts: tables, RLS policies, Prisma models, server actions,
-  routes, components>
+- <concrete artifacts: tables, RLS policies, migrations, service functions,
+  screens/routes, components, PWA behavior>
 
 ## Out of scope
 
@@ -33,8 +33,9 @@ harness and reviewer rely on them.
 **R2 (<EARS type>):** When <trigger>, the system shall <...>.
 **R3 (<EARS type>):** If <condition>, then the system shall <...>.
 <number every requirement so tests trace to R<n>. Make RLS/auth rules explicit
-requirements, e.g. "If a user requests a row they don't own, then the query shall
-return no rows.">
+requirements, e.g. "If a user queries a plan they don't own, then the query
+shall return no rows." Make mandated UX rules (Spanish text, kg, steppers,
+touch targets) requirements too.>
 
 ## Acceptance
 
@@ -44,7 +45,8 @@ scenarios if any. For UI, include accessibility criteria.>
 ## Open items
 
 <inconsistencies or unconfirmed assumptions for the human to resolve at the
-approval gate; omit the section if none>
+approval gate — especially anything touching the cross-repo contract; omit the
+section if none>
 ```
 
 ---
@@ -58,28 +60,29 @@ approval gate; omit the section if none>
 
 ## Approach
 
-<how it's built; note the layer: schema/RLS vs data access vs server actions vs
-UI vs realtime>
+<how it's built; note the layer: schema/RLS vs services vs screens/UI vs PWA>
 
-## <Schema / RLS / File layout / Components>
+## <Schema / RLS / Services / Screens / PWA>
 
-<For schema: Prisma model + the migration, plus the RLS policies (SQL) and where
-they live. For server: the App Router file layout, Server vs Client boundary, the
-server actions and their Zod schemas. For UI: routes, components, shadcn pieces.
-For dnd-kit: the optimistic-update + rollback strategy and the ordering column.>
+<For schema: the SQL migration file (tables, indexes) plus the RLS policies —
+they ship together in supabase/migrations/. For services: each function, its
+supabase-js query, row types, and error handling. For UI: routes, screen and
+component tree, data flow (services → screens → components), loading/empty/error
+states. For PWA: manifest fields, precache vs runtime-cache rules.>
 
 ## Auth & security
 
-<who can do what; getUser() checks; RLS posture; never module-scope the Supabase
-client; secrets server-only>
+<who can do what; RLS is the enforcement (the anon key is public), route guards
+are UX; the app writes only to workout_logs; no service key ever in this repo>
 
 ## Validation
 
-<Zod schemas for each input>
+<client-side validation per input (set_number ≥ 1, reps ≥ 1, weight_kg ≥ 0 in
+0.5 steps); DB constraints as backstop>
 
 ## Test approach
 
-<unit/component/E2E split, the RLS denial test, coverage or "what proves done"
+<unit/component/E2E split, the RLS denial check, coverage or "what proves done"
 target>
 
 ## Open items / discrepancies
@@ -100,7 +103,7 @@ target>
 - [ ] <task> (R2, R3)
 - [ ] <blocking decision task if there's an open item>
 - [ ] Write tests: <unit/component/E2E> asserting R1–Rn
-- [ ] Write the RLS denial test (user cannot access another user's data)
+- [ ] Verify RLS: anon reads nothing; a user reads only their own rows (schema features)
 - [ ] Verify build + typecheck + lint pass; confirm <coverage/target>
 
 ## Verification
@@ -123,7 +126,7 @@ target>
       "depends_on": []
     },
     {
-      "name": "02_data_access",
+      "name": "02_services",
       "description": "<short summary>",
       "sdd": true,
       "status": "spec_ready",

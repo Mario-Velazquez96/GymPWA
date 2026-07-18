@@ -3,59 +3,59 @@
   "features": [
     {
       "name": "00_project_setup",
-      "description": "Bootstrap the Next.js (App Router, TypeScript) app: pnpm, Tailwind + shadcn/ui, Prisma wired to the hosted Supabase Postgres (DATABASE_URL pooled + DIRECT_URL), @supabase/ssr clients (browser + server) and auth middleware, dnd-kit installed, Vitest + Playwright configured, ESLint/Prettier, .env.example, and Vercel project settings. Foundation for everything.",
+      "description": "Bootstrap the Vite + React + TypeScript SPA: pnpm, Tailwind CSS (mobile-first), React Router, @supabase/supabase-js client singleton reading VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY, vite-plugin-pwa scaffold (manifest + service worker, no caching strategy yet), Vitest + React Testing Library, Playwright, ESLint/Prettier, .env.example, and Vercel/Netlify deploy config. Foundation for everything.",
       "sdd": true,
-      "status": "spec_ready",
+      "status": "pending",
       "depends_on": []
     },
     {
-      "name": "01_auth_and_user_management",
-      "description": "Authentication and roles: User/Role(ADMIN|EMPLOYEE) Prisma model synced to Supabase auth, RLS, email/password login page, middleware-driven route protection, lib/auth.ts (requireUser/requireAdmin), and an Admin-only user management UI (invite + role edit).",
+      "name": "01_supabase_schema_and_rls",
+      "description": "Versioned SQL migrations (supabase/migrations/) for the tables in solution_design.md §3: exercises, plans, plan_days, plan_exercises, workout_logs (+ index), plus RLS policies (§3.6): exercises readable by authenticated users; plans/plan_days/plan_exercises select-only where user_id = auth.uid(); workout_logs full CRUD only for the owner. Documents how to apply them to the Supabase project. This SQL is the shared contract with the Gym repo (exercise IDs '0001'-'1324'); writes with service key stay in the Gym repo.",
       "sdd": true,
-      "status": "spec_ready",
+      "status": "pending",
       "depends_on": ["00_project_setup"]
     },
     {
-      "name": "02_catalog_management",
-      "description": "Manageable catalogs as tables (not enums): Color(name + hex), PrintType, SupplyType, TaskCategory with RLS, a seed for the 6 initial colors and initial task categories/print types, and Admin-only CRUD UI with a delete-guard for catalog values already in use.",
+      "name": "02_auth",
+      "description": "Supabase email/password authentication: login screen in Spanish, session persistence and auto-refresh via supabase-js, protected routes (unauthenticated users are redirected to /login), and logout. After login the user only ever sees data scoped to their user_id (enforced by RLS).",
       "sdd": true,
-      "status": "spec_ready",
-      "depends_on": ["01_auth_and_user_management"]
+      "status": "pending",
+      "depends_on": ["01_supabase_schema_and_rls"]
     },
     {
-      "name": "03_task_board_core",
-      "description": "Task + Subtask models with RLS, CRUD server actions (auth + Zod), a statically-rendered Kanban board across the 6 states with task cards and subtask check-off, and server-side filtering by owner, category, and state. No drag-and-drop yet.",
+      "name": "03_today_view",
+      "description": "Pantalla 'Hoy': load the active plan and show the plan_day matching the current date — day title, ordered exercise list with thumbnail, name, and target sets/reps. Day navigation to past/future days of the plan. Clear empty states for rest days, days without routine, and no active plan (RF-2).",
       "sdd": true,
-      "status": "spec_ready",
-      "depends_on": ["02_catalog_management"]
+      "status": "pending",
+      "depends_on": ["02_auth"]
     },
     {
-      "name": "04_task_board_dnd",
-      "description": "Add dnd-kit interactivity to the board: drag tasks between state columns and reorder within a column, persisting state + integer position via an idempotent server action, with optimistic update + rollback on failure and keyboard-accessible drag.",
+      "name": "04_exercise_detail",
+      "description": "Pantalla de ejercicio: animated GIF, step-by-step instructions in Spanish, target sets/reps and rest from the plan, equipment and target muscle, agent notes, and the '© Gym visual' attribution (RF-3). Read-only here — logging arrives in 05.",
       "sdd": true,
-      "status": "spec_ready",
-      "depends_on": ["03_task_board_core"]
+      "status": "pending",
+      "depends_on": ["03_today_view"]
     },
     {
-      "name": "05_expense_tracking",
-      "description": "Expense model (cost Decimal, reason, date, purchase link, supply type) with RLS, CRUD server actions, and a list + create/edit form. Data kept structured (date, supplyType) so future reports/totals need no remodel.",
+      "name": "05_workout_logging",
+      "description": "Registro de series on the exercise screen: one row per set with large one-hand steppers (weight ±2.5 kg, reps ±1), immediate insert into workout_logs per saved set (no long forms), an 'anterior' column showing the previous session's weight/reps per set for the same exercise, and prefill of each set with the previous session's values (RF-4 + RF-5 comparison).",
       "sdd": true,
-      "status": "spec_ready",
-      "depends_on": ["02_catalog_management"]
+      "status": "pending",
+      "depends_on": ["04_exercise_detail"]
     },
     {
-      "name": "06_print_inventory",
-      "description": "Print model with PrintColor many-to-many (colors used), structured printTimeMinutes/filamentGrams, print type, document link, and photo in a private Supabase Storage bucket (policies + signed-URL reads). RLS, CRUD server actions with image upload, and an inventory list with search/filter.",
+      "name": "06_history",
+      "description": "Pantalla de historial: per-exercise evolution of weight and reps over time from workout_logs, ordered by date, so Mario can see progression across weeks (RF-5 historial).",
       "sdd": true,
-      "status": "spec_ready",
-      "depends_on": ["02_catalog_management"]
+      "status": "pending",
+      "depends_on": ["05_workout_logging"]
     },
     {
-      "name": "07_weekly_planning",
-      "description": "Weekly planner: WeekPlan/WeekPlanColor/WeekPlanItem models with RLS, a color-match service (full match default + partial match showing missing colors), a color picker for the week, the filtered inventory, assigning prints to Monday-Sunday, and a derived 'dry the day before' indicator.",
+      "name": "07_pwa_install_and_cache",
+      "description": "PWA polish: complete manifest (display standalone, Spanish name, icons, theme), iPhone/Safari install support ('Agregar a pantalla de inicio'), service worker precaching the app shell and runtime-caching viewed exercise GIFs/images (CacheFirst on the Supabase Storage bucket), so the day's routine loads fast on gym mobile data. Logs still require a connection (offline queue is explicitly out of scope).",
       "sdd": true,
-      "status": "spec_ready",
-      "depends_on": ["06_print_inventory"]
+      "status": "pending",
+      "depends_on": ["05_workout_logging"]
     }
   ]
 }

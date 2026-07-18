@@ -10,7 +10,7 @@ Each `"sdd": true` feature gets a folder `specs/<feature>/` with:
 | File | Purpose |
 |---|---|
 | `requirements.md` | What and why. User stories + acceptance criteria in EARS notation, numbered `R1…Rn`. Scope and out-of-scope. |
-| `design.md` | How. Technical approach: routes/components, server actions/route handlers, Prisma schema changes, Supabase auth/Storage/RLS usage, validation, security. |
+| `design.md` | How. Technical approach: screens/components, services and their Supabase queries, SQL schema/RLS changes, PWA/service-worker behavior, validation, security. |
 | `tasks.md` | Ordered, checkable implementation steps. Each task cites the requirement(s) it satisfies and includes explicit test tasks + a coverage target. |
 
 ## EARS notation
@@ -24,22 +24,30 @@ Write acceptance criteria as structured EARS statements so they are testable:
 - **Optional:** "Where <feature included>, the system shall <response>."
 
 Examples for this stack:
-> **R3 (Event-driven):** When an authenticated user drops a card into a new
-> column, the system shall persist the card's `columnId` and `position` and
-> reflect the new order on reload.
+> **R3 (Event-driven):** When the user taps "Guardar serie" on a set row, the
+> system shall insert one `workout_logs` row with the row's `set_number`,
+> `reps`, and `weight_kg`, and show the row as saved.
 >
-> **R4 (Unwanted behavior):** If an unauthenticated request hits the reorder
-> action, then the system shall reject it with a 401 and make no DB write.
+> **R4 (Unwanted behavior):** If the insert into `workout_logs` fails, then the
+> system shall keep the row editable and show "No se pudo guardar la serie" —
+> no silent data loss.
+>
+> **R5 (State-driven):** While the current plan day has `is_rest = true`, the
+> Hoy screen shall show the rest-day state and no exercise list.
 
 ## What good design.md decisions look like here
 
-- Which parts are **Server Components** vs **Client Components** and why.
-- Mutations as **Server Actions** or **route handlers**; the auth + Zod +
-  authorize + service + revalidate flow for each.
-- **Prisma schema** additions/changes and the migration they require.
-- Where **Supabase Auth / Storage / RLS** is involved, and how authorization is
-  enforced in the server layer (remember: Prisma bypasses RLS — see
-  `docs/architecture.md`).
+- Which **screens/components** are involved and how data flows down from
+  services (no fetching inside components).
+- Each **service function**: its supabase-js query, its row types, and its
+  error handling.
+- **SQL schema / RLS** additions as a numbered migration in
+  `supabase/migrations/`, and whether they touch the cross-repo contract with
+  `Gym` (if so, flag it as an open item for the human).
+- **RLS posture:** remember the anon key is public — policies are the
+  enforcement, route guards are UX (see `docs/architecture.md`).
+- **PWA impact:** does this feature change what the service worker precaches or
+  runtime-caches?
 - Any new env vars (added to `.env.example`) and new dependencies.
 
 ## The human approval gate

@@ -4,74 +4,99 @@ Read before implementing. This is the project's definition of quality.
 
 ## Stack & source of truth
 
-- **Next.js (App Router)** + **TypeScript** is the application. The Git
-  repository is the single source of truth — never make changes only in a
-  hosted dashboard (Supabase, Vercel) that aren't reflected in code/migrations.
-- **Supabase (hosted)** provides **Postgres + Auth + Storage**. We use a
-  **dev/staging** project for development and verification — never production.
-- **Prisma** owns the schema and migrations (`prisma/schema.prisma`).
-- **Tailwind + shadcn/ui** for styling/components; **dnd-kit** for drag & drop.
-- **Vercel** hosts the app; every PR gets a **preview deploy**.
+- **React + Vite + TypeScript** is the application — a pure client-side SPA
+  packaged as a **PWA** (`vite-plugin-pwa`). There is **no server of our own**.
+- **Supabase (hosted)** is the entire backend: **Postgres + Auth + Storage**.
+  The app talks to it only through `@supabase/supabase-js` with the anon/
+  publishable key.
+- **The Git repository is the single source of truth.** Schema and RLS policies
+  live as versioned SQL in `supabase/migrations/` — never make changes only in
+  the Supabase dashboard that aren't reflected in the repo.
+- **Vercel/Netlify (free tier)** hosts the static build with HTTPS (a PWA
+  requirement).
+- **Sibling repo `Gym`:** generates monthly plans and seeds the exercise catalog
+  using the service key. The two repos share only (a) the exercise IDs
+  `"0001"`–`"1324"` and (b) the table schema in
+  `project-documents/solution_design.md` §3. Never break that contract silently.
 
 ## Layering (separation of concerns)
 
 ```
-app/ (routes)         Server Components by default; thin. Compose UI + call the data layer.
-  └─ actions / route handlers   Server-only mutations & APIs. Validate input, authorize, call services.
-components/           Presentational + interactive (Client) components. No data fetching logic.
-  └─ ui/             shadcn/ui generated primitives. Don't hand-edit unless necessary.
-lib/
-  ├─ db (prisma)     Prisma client singleton. Server-only. Never imported by a Client Component.
-  ├─ supabase/       @supabase/ssr clients: server.ts (RSC/actions) + client.ts (browser).
-  ├─ services/       Business logic. Pure-ish, testable, framework-agnostic where possible.
-  └─ validation/     Zod schemas for every external boundary (forms, actions, route handlers).
-prisma/              schema.prisma + migrations + seed.
+src/
+  main.tsx, App.tsx     Bootstrap: router, providers, auth session context.
+  screens/              One folder/file per route (Login, Hoy, Ejercicio, Historial).
+                        Screens compose components and call services. Thin.
+  components/           Presentational + interactive components. No data fetching.
+  lib/
+    supabase.ts         The supabase-js client singleton (createClient). The ONLY
+                        place the client is created.
+    types.ts            Row/domain types (generated via `supabase gen types` or
+                        hand-written to match solution_design.md §3).
+  services/             Data access: typed functions over supabase-js
+                        (getActivePlan, getDay, listPreviousSets, logSet, ...).
+                        All queries/mutations live here — testable with a mocked client.
+supabase/migrations/    Versioned SQL: tables, indexes, RLS policies.
+e2e/                    Playwright specs.
 ```
 
-- **No business logic in components.** Components render; services decide.
-- **No data access in Client Components.** Fetch in Server Components / actions /
-  route handlers and pass data down, or use a typed client wrapper.
-- **Server/Client boundary is deliberate.** Default to Server Components. Add
-  `"use client"` only for interactivity (state, effects, dnd-kit, event
-  handlers). Keep client bundles small.
+- **No queries inside components or screens.** Screens call `services/`;
+  services call the singleton client. This keeps data access testable and in
+  one place.
+- **State:** local component state + small context/hooks (auth session, active
+  plan). No heavy state library — this app is 4 screens for one user.
 
 ## Data access & security (read this twice)
 
-- **Two clients, two jobs.** Use the **Supabase client** for auth (sessions,
-  sign-in/out) and Storage. Use **Prisma** for typed relational queries and
-  migrations.
-- **Prisma bypasses Supabase Row Level Security** — it connects with elevated DB
-  credentials. Therefore: **authorization is enforced in the server layer**
-  (actions/services check the authenticated user and ownership) for every
-  Prisma read/write. RLS is still defined on tables as **defense in depth** and
-  is the primary guard for any access that goes through the Supabase client.
-- **Always start a mutation by resolving the authenticated user** via the
-  server Supabase client; reject unauthenticated/unauthorized requests before
-  touching the database.
-- **Validate at the boundary** with Zod. Never trust client input.
-- **Two connection URLs:** `DATABASE_URL` (pooled, pgBouncer port 6543, used at
-  runtime) and `DIRECT_URL` (direct, port 5432, used by `prisma migrate`).
+- **RLS is the authorization boundary.** The anon key ships to the browser by
+  design; every table is protected by Row Level Security policies
+  (solution_design.md §3.6):
+  - `exercises`: readable by authenticated users; writes only via service key
+    (Gym repo).
+  - `plans` / `plan_days` / `plan_exercises`: `select` only where the plan's
+    `user_id = auth.uid()`; writes only via service key (Gym repo).
+  - `workout_logs`: full CRUD only where `user_id = auth.uid()`.
+- **This app writes only to `workout_logs`.** Everything else is read-only. Any
+  code that inserts/updates another table is a bug by definition.
+- **Never use the service key here** — not in code, not in env, not in CI.
+- **Auth:** supabase-js manages the session (persistence + auto-refresh) in the
+  browser. Route guards redirect unauthenticated users to `/login`; guards are
+  UX, RLS is enforcement.
+- **Validate before writing:** set number ≥ 1, reps ≥ 1, weight ≥ 0 (kg,
+  increments of 0.5). Client validation is for usability; DB constraints and
+  RLS are the backstop.
+
+## PWA & performance (gym conditions)
+
+- **Mobile data in a gym is the target environment.** The day's routine
+  (~6–8 exercises + GIFs, ~500 KB) must load fast; avoid heavy dependencies.
+- **Service worker:** precache the app shell; runtime-cache exercise GIFs/images
+  from the Supabase Storage CDN (CacheFirst) once viewed.
+- **Logs require a connection** (one insert per saved set). An offline queue is
+  explicitly out of scope for now.
+- **iPhone/Safari is the target browser:** `display: "standalone"` manifest,
+  icons, install via "Agregar a pantalla de inicio". Test what you can in
+  desktop Safari/simulator; note iOS-only behaviors in the progress file.
 
 ## Non-functionals
 
 - **Type safety first.** No `any`. No `// @ts-ignore` without a one-line reason.
   `pnpm typecheck` must be clean.
-- **Server Components stay serializable.** Don't pass functions/class instances
-  across the server→client boundary; `pnpm build` catches most violations.
-- **Accessibility:** interactive UI (especially dnd-kit) must be keyboard- and
-  screen-reader-operable. Use dnd-kit's keyboard sensor and ARIA props.
-- **Idempotent & bulk-safe data ops.** Re-running a seed/migration or replaying
-  an action must not create duplicates; prefer upserts and unique constraints.
-- **No secrets in client code.** Only `NEXT_PUBLIC_*` env vars reach the browser.
+- **UI in Spanish, weights in kg.** No i18n framework — the app is monolingual.
+- **One-hand gym UX:** touch targets ≥ 44px, steppers instead of keyboards,
+  immediate saves (one set = one insert), no long forms.
+- **Accessibility:** semantic HTML, labels on inputs, visible focus, GIFs with
+  `alt` text. Steppers operable by keyboard and screen reader.
+- **Idempotent-friendly data ops:** re-saving a set must not silently duplicate
+  it; be deliberate about insert vs upsert per the feature spec.
+- **Attribution:** exercise media is © Gym Visual — keep the attribution string
+  visible where media is shown.
 
 ## What "done" looks like
 
 - All `tasks.md` items complete and checked.
 - All requirements `R<n>` traced to passing tests.
 - `typecheck`, `lint`, `test`, and `build` all green; coverage target met.
-- Data-model changes shipped as Prisma migrations that apply to dev/staging.
-- A Vercel preview deploy builds successfully.
+- Data-model changes shipped as SQL in `supabase/migrations/` that applies
+  cleanly to the Supabase project (and keeps the Gym-repo contract intact).
+- The production build (`pnpm build`) emits a valid manifest + service worker.
 - Reviewer has approved (`progress/review_<feature>.md` = APPROVE).
-
-> Adjust the bracketed/project-specific parts once `project-documents/` and the
-> `00_project_setup` feature pin down exact folder names (e.g. `src/` vs root).

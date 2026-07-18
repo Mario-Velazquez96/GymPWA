@@ -2,18 +2,19 @@
 #
 # init.sh — bootstrap + verification entry point for the SDD harness.
 #
-# Stack: Next.js (App Router) · Supabase (hosted) · Prisma · Tailwind/shadcn ·
-#        dnd-kit · pnpm · Vitest + Playwright.
+# Stack: React + Vite + TypeScript (PWA) · Supabase (hosted, supabase-js) ·
+#        Tailwind CSS · pnpm · Vitest + React Testing Library + Playwright.
 #
 # Usage:
-#   ./init.sh            # full pipeline: install → generate → typecheck → lint → test → build
+#   ./init.sh            # full pipeline: install → typecheck → lint → test → build
 #   ./init.sh quick      # fast loop: typecheck → lint → test (skip install/build/e2e)
-#   ./init.sh e2e        # run Playwright E2E only (requires a build/dev server)
+#   ./init.sh e2e        # run Playwright E2E only (requires a build/preview server)
 #
 # Conventions:
 #   - Exits non-zero on the first failing step (set -e), so callers can gate on it.
 #   - Reads env from .env.local (gitignored). Never prints secret values.
-#   - Targets the DEV/STAGING Supabase project only. Never production.
+#   - This repo only ever holds the Supabase anon/publishable key — never the
+#     service key (that belongs to the Gym repo).
 
 set -euo pipefail
 
@@ -36,26 +37,22 @@ if [ ! -f package.json ]; then
 fi
 
 if [ ! -f .env.local ]; then
-  warn ".env.local not found. Copy .env.example → .env.local and fill in the"
-  warn "Supabase + Prisma values (DATABASE_URL, DIRECT_URL, NEXT_PUBLIC_SUPABASE_URL,"
-  warn "NEXT_PUBLIC_SUPABASE_ANON_KEY, ...). Some steps may fail without them."
+  warn ".env.local not found. Copy .env.example → .env.local and fill in"
+  warn "VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. Some steps may fail without them."
 fi
 
 # --- Steps ------------------------------------------------------------------
 install_deps() { log "Installing dependencies (pnpm)"; pnpm install --frozen-lockfile || pnpm install; }
-prisma_generate() {
-  if [ -f prisma/schema.prisma ]; then log "Generating Prisma client"; pnpm prisma generate; fi
-}
 typecheck() { log "Type-checking (tsc --noEmit)"; pnpm run typecheck; }
 lint()      { log "Linting (eslint)"; pnpm run lint; }
 unit()      { log "Unit/component tests (Vitest + coverage)"; pnpm run test; }
 e2e()       { log "E2E tests (Playwright)"; pnpm run test:e2e; }
-build()     { log "Production build (next build)"; pnpm run build; }
+build()     { log "Production build (vite build → manifest + service worker)"; pnpm run build; }
 
 case "$MODE" in
   quick) typecheck; lint; unit ;;
   e2e)   e2e ;;
-  full)  install_deps; prisma_generate; typecheck; lint; unit; build ;;
+  full)  install_deps; typecheck; lint; unit; build ;;
   *)     die "Unknown mode '$MODE'. Use: full | quick | e2e" ;;
 esac
 
