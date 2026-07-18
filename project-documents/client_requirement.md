@@ -1,206 +1,86 @@
-# Requirements Document
-## Management Portal — 3D Printing Business
+# Client Requirement — App de Rutinas de Gimnasio
 
-**Version 1.1**
-**June 20, 2026**
+**Fecha:** 2026-07-18
+**Cliente / Usuario final:** Mario (mariovt860@gmail.com) — usuario único, uso personal.
 
----
+## 1. Objetivo general
 
-## 1. Project Summary
+Construir una aplicación web (PWA) que Mario pueda abrir en su iPhone mientras está en el gimnasio, para:
 
-Internal web portal to manage the operations of a 3D printing business run by two partners. The system centralizes task management, supply expense tracking, and a print inventory, and includes a weekly planning tool that helps decide what to print each day based on the filament colors available.
+1. Ver la rutina de ejercicios que le toca **por día**.
+2. Consultar por cada ejercicio su **descripción/instrucciones e imagen o GIF** del movimiento.
+3. **Registrar** cuántas series hizo de cada ejercicio y cuánto peso cargó.
+4. En semanas siguientes, **comparar** contra lo registrado anteriormente para saber cuánto peso debe cargar (progresión).
 
-The project must be built on a scalable architecture that allows new features to be added in the future (for example, quotes) without needing to redesign the foundation.
+## 2. Contexto del ecosistema
 
-### 1.1 Business Objectives
+El proyecto se divide en **dos repositorios**:
 
-- Have visibility and tracking of the business's operational tasks.
-- Record supply expenses in an organized way.
-- Maintain a searchable inventory of available prints.
-- Plan the printing week while accounting for the filament-drying logistics caused by humidity.
-- Have a scalable technical foundation for future features.
+| Repo | Responsabilidad |
+|---|---|
+| `Gym` (este repo, existente) | Base de datos de ejercicios (`exercises-dataset/`, 1,324 ejercicios con instrucciones en español, imagen y GIF) + **agente entrenador** que genera los planes mensuales y los sube al backend. |
+| Repo nuevo (por crear) | La **PWA**: frontend, autenticación, registro de entrenamientos, despliegue. |
 
-### 1.2 Key Operational Context
+Ambos repos se comunican **únicamente a través del backend (Supabase)**. El contrato compartido son los IDs de ejercicio del dataset (`"0001"`–`"1324"`).
 
-The business operates in a high-humidity city, so filaments must be dried a day before being used. This requires planning ahead which colors will be dried and, therefore, which prints can be produced during the week. This constraint is the origin of the planning and color-filtering feature.
+## 3. Requerimientos funcionales
 
----
+### RF-1 — Autenticación
+- El usuario debe poder iniciar sesión (login) en la app.
+- Al loguearse, ve únicamente las rutinas asignadas a su usuario.
 
-## 2. Scope
+### RF-2 — Rutina del día
+- Al abrir la app, mostrar la rutina correspondiente al día actual del plan mensual activo.
+- Poder navegar a otros días del plan (ver qué toca mañana, o qué tocó ayer).
+- Si el día es de descanso o no tiene rutina asignada, indicarlo claramente.
 
-### 2.1 In Scope (MVP)
+### RF-3 — Detalle de ejercicio
+Por cada ejercicio de la rutina del día mostrar:
+- Nombre del ejercicio.
+- GIF animado del movimiento (y/o imagen miniatura).
+- Instrucciones paso a paso **en español**.
+- Series y repeticiones objetivo definidas por el plan.
+- Equipo necesario y músculo objetivo (informativo).
 
-- User and role management (Admin / Employee).
-- Kanban-style task module with subtasks.
-- Supply expense tracking module.
-- Print inventory module.
-- Weekly planning module with color filtering.
-- Manageable catalogs for colors and print types.
+### RF-4 — Registro de entrenamiento
+- Por cada ejercicio, registrar cada serie realizada: **número de serie, repeticiones y peso cargado** (kg).
+- El registro debe ser rápido y usable con una mano, con el teléfono en el gym (botones grandes, mínimo tipeo).
+- Los registros quedan guardados con fecha, asociados al usuario y al ejercicio.
 
-### 2.2 Out of Scope (for now)
+### RF-5 — Comparación / progresión
+- Al registrar un ejercicio, mostrar al lado lo que se levantó la **última vez / semana anterior** en ese mismo ejercicio (peso y reps por serie).
+- Historial consultable por ejercicio (evolución del peso en el tiempo).
 
-- Offline functionality.
-- Native mobile application (intended use: desktop computer).
-- Quotes (considered a future feature).
-- Automatic linking between filament expenses and the color inventory.
-- Public portal / customer-facing catalog.
+### RF-6 — Asignación de rutinas (fuera de la app)
+- Las rutinas **no se crean en la app**. Las genera el agente entrenador del repo `Gym` y las sube al backend asignadas al usuario.
+- La app solo **lee** planes y rutinas; escribe únicamente registros de entrenamiento.
 
----
+## 4. Requerimientos del agente entrenador (repo `Gym`)
 
-## 3. Users and Roles
+- Recibe las **metas** del usuario en lenguaje natural (ej. hipertrofia, fuerza, días por semana disponibles, equipo disponible, limitaciones).
+- Se comporta como **experto entrenador de gimnasio**.
+- Selecciona ejercicios exclusivamente del dataset local (`exercises-dataset/data/exercises.json`), filtrando por grupo muscular y equipo.
+- Genera un **plan mensual**: qué ejercicios tocan cada día, con series y repeticiones objetivo.
+- Sube el plan a Supabase asignado al usuario.
+- En meses siguientes, debe poder leer el **historial de pesos registrados** desde Supabase para progresar las cargas según lo realmente levantado.
 
-The system launches with 2 users (both administrators) and must support up to a maximum of 5 users within a 12-month horizon.
+## 5. Requerimientos no funcionales
 
-| Role | Permissions |
-|------|-------------|
-| **Admin** | Full access: manage users, catalogs, tasks, expenses, inventory, and planning. |
-| **Employee** | Operational access: create and update tasks, record expenses, view inventory and planning. No user or catalog management (to be confirmed in detail). |
+- **Plataforma:** PWA instalable desde Safari en iPhone ("Agregar a pantalla de inicio"). Sin App Store.
+- **Costo:** operar dentro de capas gratuitas (Supabase free tier, Vercel/Netlify free tier).
+- **Rendimiento:** la rutina del día (~6–8 ejercicios con sus GIFs, ~500 KB) debe cargar rápido con datos móviles dentro del gym.
+- **Idioma de la UI y contenidos:** español.
+- **Unidades:** kilogramos (kg).
+- **Usuarios:** un solo usuario real; la arquitectura no necesita escalar a multiusuario, pero el modelo de datos sí asocia todo a `user_id` (no cuesta nada y deja la puerta abierta).
 
-> **Note:** even though both users are Admins today, the system must account for the Employee role from the start to avoid rework.
+## 6. Restricciones y licencias
 
----
+- Código y datos del dataset: licencia MIT.
+- Imágenes y GIFs: **© Gym Visual** (redistribuidos con permiso a 180×180). OK para uso personal; mantener la atribución `© Gym visual — https://gymvisual.com/`. **Revisar licencia antes de cualquier uso comercial o publicación de la app.**
 
-## 4. Functional Requirements
+## 7. Fuera de alcance (por ahora)
 
-### 4.1 Task Module (Kanban)
-
-Kanban-style board with draggable columns (drag & drop). Each task can have subtasks.
-
-**States (columns)**
-
-Backlog · Todo · In Progress · Pending · Blocker · Done
-
-**Task attributes**
-
-- Title
-- Description
-- Category (manageable catalog — see 4.6)
-- State / column
-- Assigned owner (one of the users)
-- Due date
-- Subtasks (list, each with its own completion state)
-
-**Initial task categories**
-
-Printer maintenance · Design creation · Purchases · Customer follow-up.
-
-Categories must be able to be added / edited in the future.
-
-**Expected capabilities**
-
-- Move tasks between columns by dragging.
-- Filter tasks by owner, category, and state.
-- View and check off subtasks within each task.
-
-### 4.2 Expense Tracking Module
-
-Simple recording of supply expenses. At this stage, only recording is required (no automatic reports or totals).
-
-**Expense attributes**
-
-| Field | Description |
-|-------|-------------|
-| **Cost** | Expense amount. |
-| **Reason** | Reason or description of the expense. |
-| **Date** | Date of the expense. |
-| **Purchase link** | Reference URL for the purchase. |
-| **Supply type** | Supply category (e.g., filament, spare part, tool). |
-
-> **Future:** reports and totals (expense per month, per supply type). The data model must be prepared for this.
-
-### 4.3 Print Inventory Module
-
-Catalog of prints the business is already able to produce. Each record stores the information needed to identify it and to support color-based planning.
-
-**Print attributes**
-
-| Field | Description |
-|-------|-------------|
-| **Name / model** | Print identifier. |
-| **Colors used** | One or more colors from the catalog. Key for planning filters. |
-| **Print time** | Estimated print duration. |
-| **Filament grams** | Total amount of filament used. |
-| **Photo** | Image of the print. |
-| **Document link** | URL to the model file / document. |
-| **Print type** | Manageable catalog (e.g., keychain, frame, deckbox). |
-
-> **Note:** only the colors used by the print are recorded (multiple), without breaking down grams per color.
-
-### 4.4 Weekly Planning Module
-
-Central tool for organizing the printing week while accounting for filament pre-drying.
-
-**Usage flow**
-
-1. The user selects which colors will be dried (e.g., Piel, Café, Azul, etc.).
-2. The system filters from the inventory the prints that can be produced with those available colors.
-3. The user chooses which prints to make and assigns them to specific days of the week.
-4. The weekly view shows what will be printed each day and which colors must be ready.
-
-**Expected capabilities**
-
-- Select the set of colors available for the week.
-- Filter the inventory by those colors.
-- Assign prints to days (Monday through Sunday).
-- Indicate which colors to dry the day before each print.
-
-**Color filtering modes**
-
-The module offers two views to filter the inventory based on the colors available that week:
-
-- **Full match (default view):** shows only the prints whose colors are ALL available. These can be printed with no pending items.
-- **Partial match (additional button):** shows prints that match at least one of the available colors, indicating which colors would be missing. Useful for evaluating what else could be dried or adjusted.
-
-### 4.5 Color Catalog
-
-Fixed color catalog, manageable by an Admin. Each color has a name and, preferably, a color swatch (hex) to identify it visually in the filters.
-
-Initial color catalog:
-
-- Azul Ballena MM
-- Café Moka MM
-- Piel MM
-- Verde Iguana MM
-- Rojo Cochinilla MM
-- Rojo Nochebuena MM
-
-### 4.6 Manageable Catalogs
-
-To support growth, the following catalogs must be editable without code changes:
-
-- Task categories.
-- Print types (keychain, frame, deckbox, etc.) — confirmed as manageable.
-- Supply types (for expenses).
-- Colors.
-
----
-
-## 5. Non-Functional Requirements
-
-- **Scalability:** modular architecture that allows new features (e.g., quotes) to be added without redesigning the foundation.
-- **Platform:** web application optimized for desktop (responsive desirable, not mandatory for MVP).
-- **Concurrent users:** up to 5 users.
-- **Authentication:** login with role-based access control (Admin / Employee).
-- **Image storage:** support for print photos.
-- **Availability:** online use; no offline mode required.
-
----
-
-## 6. Future Features (not in MVP)
-
-- Quotes module.
-- Expense reports and totals.
-- Linking between filament expenses and the color inventory (filament stock control).
-- Access from mobile devices / app.
-- Customer order management.
-
----
-
-## 7. Open Questions and Pending Decisions
-
-Closed decisions: color catalog defined, print types manageable, and planning filter with a full-match view (default) plus a partial-match button.
-
-Pending minor items to define during detailed design:
-
-1. Define the exact scope of the Employee role's permissions.
-2. Define whether print time and grams will be free-text or structured fields.
+- Publicación en App Store / app nativa.
+- Multiusuario real, roles, o funciones sociales.
+- Creación/edición de rutinas desde la propia app.
+- Nutrición, cardio programado, wearables.
