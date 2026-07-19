@@ -12,7 +12,7 @@
       "name": "01_supabase_schema_and_rls",
       "description": "Versioned SQL migrations (supabase/migrations/) for the tables in solution_design.md §3: exercises, plans, plan_days, plan_exercises, workout_logs (+ index), plus RLS policies (§3.6): exercises readable by authenticated users; plans/plan_days/plan_exercises select-only where user_id = auth.uid(); workout_logs full CRUD only for the owner. Documents how to apply them to the Supabase project. This SQL is the shared contract with the Gym repo (exercise IDs '0001'-'1324'); writes with service key stay in the Gym repo.",
       "sdd": true,
-      "status": "spec_ready",
+      "status": "done",
       "depends_on": ["00_project_setup"]
     },
     {

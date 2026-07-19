@@ -1,17 +1,19 @@
 # Current session
 
 ## Feature in progress
-(none — 00_project_setup is done; next up: 01_supabase_schema_and_rls)
+(none — 01_supabase_schema_and_rls is done; next up: 02_auth)
 
 ## State
-2026-07-19: `00_project_setup` closed (implemented + reviewer APPROVE, see
-`progress/history.md`). Next feature is **01_supabase_schema_and_rls** at
-`spec_ready`.
+2026-07-19: `01_supabase_schema_and_rls` closed (implemented, migrations
+applied by the human to the live Supabase project, RLS denial checks + 42/42
+contract check green, reviewer APPROVE — see `progress/history.md`). Next
+feature is **02_auth** at `spec_ready`.
 
 ## Notes / blockers
-- **⏸ Human approval gate:** 01's spec needs human approval before setting it
-  `in_progress` and launching the implementer.
-- **Blocked on Supabase project credentials:** no Supabase project exists yet.
-  Once created, put the real `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
-  in `.env.local` (currently holds placeholder values; gitignored). Only the
-  anon key — the service key stays in the Gym repo.
+- **⏸ Human approval gate:** 02_auth's spec needs human approval before
+  setting it `in_progress` and launching the implementer. All prerequisites
+  are ready: live Supabase project with schema + RLS applied, and E2E user
+  credentials in `.env.local`.
+- **Cross-repo pending:** re-run `node scripts/check-rls.mjs` after the `Gym`
+  repo seeds `exercises` — the own-`user_id` insert check (c) is currently
+  SKIP by design (FK on `exercise_id` against an empty catalog).
