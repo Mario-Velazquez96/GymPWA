@@ -1,0 +1,19 @@
+# Dependencias
+node_modules/
+
+# Builds
+dist/
+dev-dist/
+
+# Cobertura y reportes de test
+coverage/
+playwright-report/
+test-results/
+
+# Variables de entorno locales (nunca commitear valores reales)
+.env.local
+.env.*.local
+
+# Logs y basura de editor/SO
+*.log
+.DS_Store

@@ -1,14 +1,17 @@
 # Current session
 
 ## Feature in progress
-(none)
+(none — 00_project_setup is done; next up: 01_supabase_schema_and_rls)
 
 ## State
-Fresh session. Read `AGENTS.md`, `feature_list.json`, then run `./init.sh`.
-Harness is set up for the gym-routines PWA: React + Vite + TypeScript +
-Tailwind + vite-plugin-pwa + supabase-js (pnpm; Vitest + Playwright).
-App not bootstrapped yet — first feature is `00_project_setup` (status
-`pending`, needs spec_author + human approval first). The brief lives in
-`project-documents/client_requirement.md` and `solution_design.md`.
+2026-07-19: `00_project_setup` closed (implemented + reviewer APPROVE, see
+`progress/history.md`). Next feature is **01_supabase_schema_and_rls** at
+`spec_ready`.
 
 ## Notes / blockers
+- **⏸ Human approval gate:** 01's spec needs human approval before setting it
+  `in_progress` and launching the implementer.
+- **Blocked on Supabase project credentials:** no Supabase project exists yet.
+  Once created, put the real `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+  in `.env.local` (currently holds placeholder values; gitignored). Only the
+  anon key — the service key stays in the Gym repo.

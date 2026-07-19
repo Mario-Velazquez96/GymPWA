@@ -3,58 +3,58 @@
   "features": [
     {
       "name": "00_project_setup",
-      "description": "Bootstrap the Vite + React + TypeScript SPA: pnpm, Tailwind CSS (mobile-first), React Router, @supabase/supabase-js client singleton reading VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY, vite-plugin-pwa scaffold (manifest + service worker, no caching strategy yet), Vitest + React Testing Library, Playwright, ESLint/Prettier, .env.example, and Vercel/Netlify deploy config. Foundation for everything.",
+      "description": "Bootstrap the Vite + React + TypeScript SPA: pnpm, Tailwind CSS (mobile-first), React Router, @supabase/supabase-js client singleton reading VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY, vite-plugin-pwa scaffold (manifest + service worker, no caching strategy yet), Vitest + React Testing Library, Playwright, ESLint/Prettier, .env.example, and Vercel deploy config. Foundation for everything.",
       "sdd": true,
-      "status": "pending",
+      "status": "done",
       "depends_on": []
     },
     {
       "name": "01_supabase_schema_and_rls",
       "description": "Versioned SQL migrations (supabase/migrations/) for the tables in solution_design.md §3: exercises, plans, plan_days, plan_exercises, workout_logs (+ index), plus RLS policies (§3.6): exercises readable by authenticated users; plans/plan_days/plan_exercises select-only where user_id = auth.uid(); workout_logs full CRUD only for the owner. Documents how to apply them to the Supabase project. This SQL is the shared contract with the Gym repo (exercise IDs '0001'-'1324'); writes with service key stay in the Gym repo.",
       "sdd": true,
-      "status": "pending",
+      "status": "spec_ready",
       "depends_on": ["00_project_setup"]
     },
     {
       "name": "02_auth",
       "description": "Supabase email/password authentication: login screen in Spanish, session persistence and auto-refresh via supabase-js, protected routes (unauthenticated users are redirected to /login), and logout. After login the user only ever sees data scoped to their user_id (enforced by RLS).",
       "sdd": true,
-      "status": "pending",
+      "status": "spec_ready",
       "depends_on": ["01_supabase_schema_and_rls"]
     },
     {
       "name": "03_today_view",
       "description": "Pantalla 'Hoy': load the active plan and show the plan_day matching the current date — day title, ordered exercise list with thumbnail, name, and target sets/reps. Day navigation to past/future days of the plan. Clear empty states for rest days, days without routine, and no active plan (RF-2).",
       "sdd": true,
-      "status": "pending",
+      "status": "spec_ready",
       "depends_on": ["02_auth"]
     },
     {
       "name": "04_exercise_detail",
       "description": "Pantalla de ejercicio: animated GIF, step-by-step instructions in Spanish, target sets/reps and rest from the plan, equipment and target muscle, agent notes, and the '© Gym visual' attribution (RF-3). Read-only here — logging arrives in 05.",
       "sdd": true,
-      "status": "pending",
+      "status": "spec_ready",
       "depends_on": ["03_today_view"]
     },
     {
       "name": "05_workout_logging",
       "description": "Registro de series on the exercise screen: one row per set with large one-hand steppers (weight ±2.5 kg, reps ±1), immediate insert into workout_logs per saved set (no long forms), an 'anterior' column showing the previous session's weight/reps per set for the same exercise, and prefill of each set with the previous session's values (RF-4 + RF-5 comparison).",
       "sdd": true,
-      "status": "pending",
+      "status": "spec_ready",
       "depends_on": ["04_exercise_detail"]
     },
     {
       "name": "06_history",
       "description": "Pantalla de historial: per-exercise evolution of weight and reps over time from workout_logs, ordered by date, so Mario can see progression across weeks (RF-5 historial).",
       "sdd": true,
-      "status": "pending",
+      "status": "spec_ready",
       "depends_on": ["05_workout_logging"]
     },
     {
       "name": "07_pwa_install_and_cache",
       "description": "PWA polish: complete manifest (display standalone, Spanish name, icons, theme), iPhone/Safari install support ('Agregar a pantalla de inicio'), service worker precaching the app shell and runtime-caching viewed exercise GIFs/images (CacheFirst on the Supabase Storage bucket), so the day's routine loads fast on gym mobile data. Logs still require a connection (offline queue is explicitly out of scope).",
       "sdd": true,
-      "status": "pending",
+      "status": "spec_ready",
       "depends_on": ["05_workout_logging"]
     }
   ]

@@ -1,0 +1,11 @@
+dist
+dev-dist
+coverage
+playwright-report
+test-results
+node_modules
+pnpm-lock.yaml
+
+# Markdown del harness SDD (specs, docs, progress) — no se formatea con Prettier
+*.md
+.claude/
