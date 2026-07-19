@@ -2,24 +2,24 @@
 
 > Each task cites the requirement(s) it satisfies. Mark `[x]` as completed.
 
-- [ ] Write `lib/types.ts` row types mirroring the `01` schema (R9)
-- [ ] Write `lib/utils.ts`: `todayLocalISO()` + `formatDateEs()` with unit
+- [x] Write `lib/types.ts` row types mirroring the `01` schema (R9)
+- [x] Write `lib/utils.ts`: `todayLocalISO()` + `formatDateEs()` with unit
       tests (R2)
-- [ ] Implement `services/plans.ts` (`getActivePlan`, `getPlanDay`,
+- [x] Implement `services/plans.ts` (`getActivePlan`, `getPlanDay`,
       `getDayExercises`) with the `Result<T>` error pattern (R9)
-- [ ] Implement `usePlanDay(selectedDate)` hook composing the three calls (R1,
+- [x] Implement `usePlanDay(selectedDate)` hook composing the three calls (R1,
       R8)
-- [ ] Build `ExerciseCard` (thumbnail, name, sets × reps, link, ≥44px) (R7,
+- [x] Build `ExerciseCard` (thumbnail, name, sets × reps, link, ≥44px) (R7,
       R10)
-- [ ] Build `TodayScreen`: date header + prev/next with edge clamping, and the
+- [x] Build `TodayScreen`: date header + prev/next with edge clamping, and the
       four body states + loading/error/retry (R1, R3, R4, R5, R6, R8)
-- [ ] Add `e2e/fixtures/test-plan.sql` seed snippet (plan + 3 days: normal,
+- [x] Add `e2e/fixtures/test-plan.sql` seed snippet (plan + 3 days: normal,
       rest, gap) for manual/E2E verification (acceptance)
-- [ ] Unit tests for services + utils (mocked client) (R2, R9)
-- [ ] Component tests for the four states, arrows, retry, link (R1, R3–R8)
-- [ ] E2E: login → today renders seeded routine → navigate to rest day (R1,
+- [x] Unit tests for services + utils (mocked client) (R2, R9)
+- [x] Component tests for the four states, arrows, retry, link (R1, R3–R8)
+- [x] E2E: login → today renders seeded routine → navigate to rest day (R1,
       R3, R6)
-- [ ] Run `./init.sh` + `./init.sh e2e`; all green
+- [x] Run `./init.sh` + `./init.sh e2e`; all green
 
 ## Verification
 

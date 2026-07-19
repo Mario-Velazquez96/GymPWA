@@ -26,7 +26,7 @@
       "name": "03_today_view",
       "description": "Pantalla 'Hoy': load the active plan and show the plan_day matching the current date — day title, ordered exercise list with thumbnail, name, and target sets/reps. Day navigation to past/future days of the plan. Clear empty states for rest days, days without routine, and no active plan (RF-2).",
       "sdd": true,
-      "status": "spec_ready",
+      "status": "done",
       "depends_on": ["02_auth"]
     },
     {

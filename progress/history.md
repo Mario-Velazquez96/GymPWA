@@ -59,3 +59,29 @@ wrong-password error) plus a verified clean skip when `E2E_*` are unset.
 Coverage: **100% lines on `services/auth.ts` and `hooks/useSession.tsx`**
 (45 Vitest tests, global 94.7% lines). Reviewer: **APPROVE**
 (`progress/review_02_auth.md`). Details: `progress/impl_02_auth.md`.
+
+## 2026-07-19 — 03_today_view: implemented, reviewed, DONE
+
+Real "Hoy" screen replacing the placeholder: loads the active plan and shows
+the `plan_day` matching the **device-local** date (`todayLocalISO()`, never
+UTC; header "lun 3 ago" via es-MX `Intl.formatToParts`), with ‹ › day
+navigation clamped to the plan's `start_date`–`end_date` (arrows disabled at
+the edges) and the four Spanish body states — ordered exercise list (thumbnail
+56px, name, "4 × 8-12", card → `/ejercicio/{plan_exercise.id}`), "Día de
+descanso 💤", "Sin rutina asignada para este día", "Sin plan activo" — plus
+loading and error + "Reintentar". New layer: `lib/types.ts` (row types
+mirroring `001_schema.sql`), `lib/utils.ts` (date helpers incl. timezone-edge
+tests), `services/plans.ts` (`getActivePlan`/`getPlanDay`/`getDayExercises`
+with the `Result<T>` Spanish-error pattern; the only `supabase.from` in the
+app), `hooks/usePlanDay.ts` (composes the 3 calls per date, early-exits,
+`retry`), `components/ExerciseCard.tsx`. Read-only — zero writes, zero
+migrations, zero new deps/env vars. The **human applied
+`e2e/fixtures/test-plan.sql` live** (idempotent, `current_date`-relative plan
+±3, placeholder exercises '0001'–'0003' with `ON CONFLICT DO NOTHING`).
+Gates: `./init.sh` and `./init.sh e2e` green — **98 tests / 14 files**;
+coverage 100% lines on `services/plans.ts` + `lib/utils.ts`, 88.4% on
+`hooks/usePlanDay.ts` (global 95.3%); dual-path E2E `today.spec.ts` verified
+on the **seeded path** against the live DB (day title, 3 ordered exercises,
+tomorrow rest day, +2/+3 unassigned, › pinned at `end_date`). Reviewer:
+**APPROVE** (`progress/review_03_today_view.md`). Details:
+`progress/impl_03_today_view.md`.
