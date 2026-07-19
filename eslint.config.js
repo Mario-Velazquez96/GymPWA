@@ -23,7 +23,9 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      "no-console": ["error", { allow: ["warn", "error"] }],
+      // "debug" permitido: el design de 02_auth manda detalles de error a
+      // console.debug solo en dev (import.meta.env.DEV).
+      "no-console": ["error", { allow: ["warn", "error", "debug"] }],
     },
   },
   {

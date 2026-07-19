@@ -19,7 +19,7 @@
       "name": "02_auth",
       "description": "Supabase email/password authentication: login screen in Spanish, session persistence and auto-refresh via supabase-js, protected routes (unauthenticated users are redirected to /login), and logout. After login the user only ever sees data scoped to their user_id (enforced by RLS).",
       "sdd": true,
-      "status": "spec_ready",
+      "status": "done",
       "depends_on": ["01_supabase_schema_and_rls"]
     },
     {

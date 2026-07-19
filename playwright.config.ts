@@ -1,5 +1,14 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Carga E2E_EMAIL / E2E_PASSWORD desde .env.local sin dependencias extra
+// (Node ≥ 20.12 trae process.loadEnvFile). Sin el archivo, los specs que
+// requieren credenciales se saltan solos con un mensaje claro.
+try {
+  process.loadEnvFile(".env.local");
+} catch {
+  // .env.local no existe — entorno sin credenciales (p. ej. CI sin secretos).
+}
+
 /**
  * E2E contra la build de producción (`pnpm preview`) para que el camino del
  * service worker sea realista. Requiere `pnpm build` previo (init.sh full lo

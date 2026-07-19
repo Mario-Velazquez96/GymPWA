@@ -38,3 +38,24 @@ comment-only in `002_rls.sql`, nothing re-applied)
 repo seeds `exercises` — the own-`user_id` insert check (c) is currently SKIP
 by design (FK on `exercise_id` blocks inserts against an empty catalog).
 Details: `progress/impl_01_supabase_schema_and_rls.md`.
+
+## 2026-07-19 — 02_auth: implemented, reviewed, DONE
+
+Real email/password login against the live Supabase project: `services/auth.ts`
+(`signIn`/`signOut` with Spanish error mapping — `invalid_credentials` →
+"Correo o contraseña incorrectos", anything else → "Error de conexión,
+reintenta"; details via dev-gated `console.debug` only), `hooks/useSession.tsx`
+(`SessionProvider` over `getSession` + `onAuthStateChange`, persistent session
+across reloads), `ProtectedRoute`/`PublicOnly` guards wired for all routes in
+`App.tsx` (loading spinner, no redirect flash; missing-env `ConfigError`
+contract from 00 preserved), real `LoginScreen` (labeled inputs, `min-h-11`
+targets, disabled + "Entrando…" while pending, inline Spanish error), and an
+app-shell header with "Cerrar sesión" on every protected screen.
+`playwright.config.ts` loads `E2E_*` from `.env.local` via
+`process.loadEnvFile` (no new deps). Gates: `./init.sh` and `./init.sh e2e`
+both green — E2E includes the **real-credential round trip** (redirect to
+/login, sign-in, reload keeps session, authenticated /login → /, sign-out,
+wrong-password error) plus a verified clean skip when `E2E_*` are unset.
+Coverage: **100% lines on `services/auth.ts` and `hooks/useSession.tsx`**
+(45 Vitest tests, global 94.7% lines). Reviewer: **APPROVE**
+(`progress/review_02_auth.md`). Details: `progress/impl_02_auth.md`.
