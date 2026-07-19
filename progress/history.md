@@ -85,3 +85,29 @@ on the **seeded path** against the live DB (day title, 3 ordered exercises,
 tomorrow rest day, +2/+3 unassigned, › pinned at `end_date`). Reviewer:
 **APPROVE** (`progress/review_03_today_view.md`). Details:
 `progress/impl_03_today_view.md`.
+
+## 2026-07-19 — 04_exercise_detail: implemented, reviewed, DONE
+
+Real exercise detail screen replacing the placeholder (RF-3, read-only): from
+a "Hoy" card, `/ejercicio/:planExerciseId` loads the joined detail via the new
+`services/exercises.ts#getPlanExerciseDetail` (`plan_exercises` +
+`exercises(*)`, `maybeSingle`, `Result<T>` Spanish-error pattern; `null`
+covers nonexistent ids, RLS-filtered rows **and** non-uuid junk ids via
+`22P02` → same "Ejercicio no encontrado" path). UI: `ExerciseMedia` (GIF over
+the `image_url` thumbnail in a fixed `aspect-square max-w-[240px]` box —
+opacity swap on load, graceful degradation to a solid placeholder when the
+media 404s, no layout shift, no infinite spinner; alt "Demostración de
+{name}"), ordered Spanish steps (`InstructionSteps` `<ol>` from
+`instruction_steps_es`), targets "4 × 8-12 · Descanso: N s" (rest line only
+when present), equipment/target chips, notes callout when present, visible
+"© Gym visual — https://gymvisual.com/" attribution link, header back control
+(≥ 44px) to Hoy, and loading / error + "Reintentar" / not-found + "Volver a
+Hoy" states. New type `PlanExerciseDetail`; zero writes, zero migrations,
+zero new deps/env vars. Gates: `./init.sh` and `./init.sh e2e` green —
+**126 tests / 18 files**, coverage **100% lines on `services/exercises.ts`
+and `screens/ExerciseScreen.tsx`** (global 97.0%); new `e2e/exercise.spec.ts`
+verified the **fixture path against the live DB** (Hoy → first card → detail
+with degraded placeholder media → back to Hoy), with clean skips when
+credentials or the fixture plan are absent. Reviewer: **APPROVE**
+(`progress/review_04_exercise_detail.md`). Details:
+`progress/impl_04_exercise_detail.md`.

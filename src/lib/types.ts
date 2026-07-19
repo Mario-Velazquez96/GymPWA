@@ -64,3 +64,8 @@ export type ExerciseSummary = Pick<
 export interface PlanExerciseWithExercise extends PlanExercise {
   exercises: ExerciseSummary;
 }
+
+/** Fila de `plan_exercises` con el ejercicio completo (join del design 04). */
+export interface PlanExerciseDetail extends PlanExercise {
+  exercises: Exercise;
+}

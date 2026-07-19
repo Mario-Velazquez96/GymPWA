@@ -33,7 +33,7 @@
       "name": "04_exercise_detail",
       "description": "Pantalla de ejercicio: animated GIF, step-by-step instructions in Spanish, target sets/reps and rest from the plan, equipment and target muscle, agent notes, and the '© Gym visual' attribution (RF-3). Read-only here — logging arrives in 05.",
       "sdd": true,
-      "status": "spec_ready",
+      "status": "done",
       "depends_on": ["03_today_view"]
     },
     {

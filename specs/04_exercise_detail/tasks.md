@@ -2,19 +2,19 @@
 
 > Each task cites the requirement(s) it satisfies. Mark `[x]` as completed.
 
-- [ ] Implement `services/exercises.ts#getPlanExerciseDetail` with `Result<T>`
+- [x] Implement `services/exercises.ts#getPlanExerciseDetail` with `Result<T>`
       pattern and `maybeSingle` (R1, R7, R10)
-- [ ] Add `PlanExerciseDetail` type composing `03` types (R10)
-- [ ] Build `ExerciseMedia` (GIF over thumbnail placeholder, fixed aspect,
+- [x] Add `PlanExerciseDetail` type composing `03` types (R10)
+- [x] Build `ExerciseMedia` (GIF over thumbnail placeholder, fixed aspect,
       Spanish alt) (R2)
-- [ ] Build `InstructionSteps` (`<ol>` numbered Spanish steps) (R3)
-- [ ] Build `ExerciseScreen`: title, targets + rest, chips, notes, attribution,
+- [x] Build `InstructionSteps` (`<ol>` numbered Spanish steps) (R3)
+- [x] Build `ExerciseScreen`: title, targets + rest, chips, notes, attribution,
       back control, loading/error/not-found states (R1, R4–R9)
-- [ ] Unit tests for the service (found / null / error) (R1, R7)
-- [ ] Component tests: full render, step order, attribution, not-found,
+- [x] Unit tests for the service (found / null / error) (R1, R7)
+- [x] Component tests: full render, step order, attribution, not-found,
       retry, placeholder swap (R2–R7, R9)
-- [ ] E2E: routine → exercise detail → back (R1, R8)
-- [ ] Run `./init.sh` + `./init.sh e2e`; all green
+- [x] E2E: routine → exercise detail → back (R1, R8)
+- [x] Run `./init.sh` + `./init.sh e2e`; all green
 
 ## Verification
 
