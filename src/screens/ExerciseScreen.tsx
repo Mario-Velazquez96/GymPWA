@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactElement } from "react";
 import { Link, useParams } from "react-router-dom";
 import ExerciseMedia from "@/components/ExerciseMedia";
 import InstructionSteps from "@/components/InstructionSteps";
+import LoggingSection from "@/components/LoggingSection";
 import type { PlanExerciseDetail } from "@/lib/types";
 import { getPlanExerciseDetail } from "@/services/exercises";
 
@@ -45,7 +46,8 @@ function Attribution() {
  * plan, chips de equipo/músculo, notas del agente, pasos numerados en español
  * y atribución Gym Visual (R1–R6). Estados: carga, error con "Reintentar"
  * (R9) y "Ejercicio no encontrado" para ids inexistentes o filtrados por RLS
- * (R7). El registro de series llega en 05 (sección futura bajo la info).
+ * (R7). Bajo la info se monta <LoggingSection /> (05_workout_logging): la
+ * única superficie de escritura de la app (solo `workout_logs`).
  */
 export default function ExerciseScreen() {
   const { planExerciseId } = useParams<"planExerciseId">();
@@ -147,6 +149,8 @@ export default function ExerciseScreen() {
           <h2 className="text-lg font-semibold text-slate-100">Instrucciones</h2>
           <InstructionSteps steps={exercise.instruction_steps_es} />
         </section>
+
+        <LoggingSection planExercise={detail} />
 
         <Attribution />
       </article>

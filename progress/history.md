@@ -111,3 +111,34 @@ with degraded placeholder media → back to Hoy), with clean skips when
 credentials or the fixture plan are absent. Reviewer: **APPROVE**
 (`progress/review_04_exercise_detail.md`). Details:
 `progress/impl_04_exercise_detail.md`.
+
+## 2026-07-19 — 05_workout_logging: implemented, reviewed, DONE
+
+The app's core write slice (RF-4/RF-5): "Registro de series" section mounted
+on the exercise screen. New `services/logs.ts` — the **only** writer in the
+app, writing **only** `workout_logs`: `getPreviousSession` (max-`performed_at`
+client filter over `.lt` + double order + limit 10), `getSessionSets` (today's
+saved sets), `logSet` (one confirmed insert per set with the live session's
+`user_id` and **device-local** `performed_at` via `todayLocalISO()`, never the
+DB default). Pure helpers in `lib/logging.ts`: `validateSet` (weight ≥ 0 in
+0.5-kg steps, integer reps ≥ 1, Spanish message per violation), the prefill
+chain `resolvePrefill` (previous-session set *n* → current UI row *n−1* →
+weight 0 + first number of `target_reps`, fallback 10 — as the human resolved
+2026-07-18), and `buildInitialRows` (today's saved rows ++ editable rows up to
+`target_sets`). UI: `Stepper` (±2.5 kg / ±1 rep, min clamp, ≥ 44px targets,
+tap-to-type `inputmode="decimal"` committing on blur/Enter), `SetRow` with the
+`editable → saving(disabled) → saved(✓) | error(values intact + "No se pudo
+guardar la serie, reintenta")` state machine and the "Anterior: 22.5 × 10 | —"
+column, `LoggingSection` + `useWorkoutLog` (parallel load, retry, "Agregar
+serie", and a synchronous in-flight ref guard so a double tap can never
+double-insert). Same-day reopen renders saved sets as ✓ rows. Zero migrations,
+zero new deps/env vars. Gates: `./init.sh` and `./init.sh e2e` green —
+**218 tests / 23 files**, coverage **100% lines on `services/logs.ts` and
+`lib/logging.ts`** (global 97.0%); new `e2e/logging.spec.ts` ran against the
+live DB (**real writes**, approved): saved 2 sets for fixture exercise '0001'
+adjusting weight with the steppers, reload showed both as ✓ with persisted
+values, then deleted its rows via the authenticated Supabase REST API inside
+the spec (the app services have no delete, by design), with clean skips when
+credentials or the fixture plan are absent. Reviewer: **APPROVE**
+(`progress/review_05_workout_logging.md`). Details:
+`progress/impl_05_workout_logging.md`.

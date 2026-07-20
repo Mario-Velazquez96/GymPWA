@@ -54,11 +54,21 @@ export interface PlanExercise {
   notes: string | null;
 }
 
+/** §3.5 workout_logs — la ÚNICA tabla que la app escribe (una fila por serie). */
+export interface WorkoutLog {
+  id: string;
+  user_id: string;
+  exercise_id: string;
+  plan_exercise_id: string | null; // nullable: permite log libre
+  performed_at: string; // "YYYY-MM-DD" (fecha local del dispositivo)
+  set_number: number;
+  reps: number;
+  weight_kg: number;
+  created_at: string;
+}
+
 /** Subconjunto de `exercises` que el join de la pantalla Hoy necesita. */
-export type ExerciseSummary = Pick<
-  Exercise,
-  "id" | "name" | "image_url" | "equipment" | "target"
->;
+export type ExerciseSummary = Pick<Exercise, "id" | "name" | "image_url" | "equipment" | "target">;
 
 /** Fila de `plan_exercises` con su ejercicio embebido (join del design 03). */
 export interface PlanExerciseWithExercise extends PlanExercise {

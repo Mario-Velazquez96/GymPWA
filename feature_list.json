@@ -40,7 +40,7 @@
       "name": "05_workout_logging",
       "description": "Registro de series on the exercise screen: one row per set with large one-hand steppers (weight ±2.5 kg, reps ±1), immediate insert into workout_logs per saved set (no long forms), an 'anterior' column showing the previous session's weight/reps per set for the same exercise, and prefill of each set with the previous session's values (RF-4 + RF-5 comparison).",
       "sdd": true,
-      "status": "spec_ready",
+      "status": "done",
       "depends_on": ["04_exercise_detail"]
     },
     {

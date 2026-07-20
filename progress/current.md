@@ -1,21 +1,20 @@
 # Current session
 
 ## Feature in progress
-(none — 04_exercise_detail is done; next up: 05_workout_logging)
+(none — 05_workout_logging is done; next up: 06_history)
 
 ## State
-2026-07-19: `04_exercise_detail` closed (exercise detail screen: GIF over the
-thumbnail placeholder in a fixed box, ordered Spanish instruction steps,
-targets + rest, equipment/target chips, notes callout, "© Gym visual"
-attribution, not-found/loading/error states, back to Hoy; 126 tests + the
-e2e fixture path verified against the live DB, coverage 100% lines on
-`services/exercises.ts` + `ExerciseScreen.tsx`, reviewer APPROVE — see
-`progress/history.md`).
-Next feature is **05_workout_logging** at `spec_ready`.
+2026-07-19: `05_workout_logging` closed (set logging on the exercise screen:
+`services/logs.ts` as the app's only writer to `workout_logs`, Stepper/SetRow
+state machine, "Anterior" comparison + prefill chain, immediate per-set
+inserts with device-local `performed_at`, client validation; 218 tests + 6
+e2e specs incl. real writes with cleanup, coverage 100% lines on the logs
+service + helpers, reviewer APPROVE — see `progress/history.md`).
+Next feature is **06_history** at `spec_ready`.
 
 ## Notes / blockers
-- **⏸ Human approval gate:** 05_workout_logging's spec needs human approval
-  before setting it `in_progress` and launching the implementer.
+- **⏸ Human approval gate:** 06_history's spec needs human approval before
+  setting it `in_progress` and launching the implementer.
 - **Cross-repo pending:** re-run `node scripts/check-rls.mjs` after the `Gym`
   repo seeds `exercises` — the own-`user_id` insert check (c) is currently
   SKIP by design (FK on `exercise_id` against an empty catalog).
@@ -24,6 +23,6 @@ Next feature is **05_workout_logging** at `spec_ready`.
   NOTHING`) exist in the live DB via `e2e/fixtures/test-plan.sql`. The script
   is idempotent and safe to re-run (e.g. to re-center the plan on
   `current_date`); the Gym repo's real seed can coexist/overwrite the
-  placeholder catalog rows. **Heads-up for 05:** its e2e will WRITE real
-  `workout_logs` rows for the fixture exercises ('0001'–'0003') under the
-  real user — plan for cleanup/idempotency in that spec's fixture strategy.
+  placeholder catalog rows. `e2e/logging.spec.ts` writes real `workout_logs`
+  rows for exercise '0001' and deletes today's rows for it at start and end
+  (authenticated REST inside the spec — the app services have no delete).

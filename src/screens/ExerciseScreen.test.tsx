@@ -10,7 +10,17 @@ vi.mock("@/services/exercises", () => ({
   EXERCISES_ERROR_LOAD: "No se pudo cargar el ejercicio",
 }));
 
+/** Services de logs mockeados: la pantalla monta <LoggingSection /> (05). */
+vi.mock("@/services/logs", () => ({
+  getPreviousSession: vi.fn(),
+  getSessionSets: vi.fn(),
+  logSet: vi.fn(),
+  LOGS_ERROR_LOAD: "No se pudieron cargar las series",
+  LOGS_ERROR_SAVE: "No se pudo guardar la serie, reintenta",
+}));
+
 import { getPlanExerciseDetail } from "@/services/exercises";
+import { getPreviousSession, getSessionSets } from "@/services/logs";
 import ExerciseScreen from "@/screens/ExerciseScreen";
 
 const mockGetDetail = vi.mocked(getPlanExerciseDetail);
@@ -60,6 +70,8 @@ function renderScreen(planExerciseId = "pe-1") {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getPreviousSession).mockResolvedValue({ data: [], error: null });
+  vi.mocked(getSessionSets).mockResolvedValue({ data: [], error: null });
 });
 
 describe("ExerciseScreen — render completo (R1–R6)", () => {
@@ -90,8 +102,12 @@ describe("ExerciseScreen — render completo (R1–R6)", () => {
     renderScreen();
 
     await screen.findByRole("heading", { name: "Instrucciones" });
-    const list = screen.getByRole("list");
-    expect(list.tagName).toBe("OL");
+    // Hay más de una lista en la pantalla (la sección de registro usa <ul>):
+    // los pasos son la única lista ordenada.
+    const list = screen.getAllByRole("list").find((candidate) => candidate.tagName === "OL");
+    if (list === undefined) {
+      throw new Error("No se encontró la lista ordenada de pasos");
+    }
     const items = within(list).getAllByRole("listitem");
     expect(items.map((item) => item.textContent)).toEqual([
       "Acuéstate en el banco",
@@ -148,6 +164,16 @@ describe("ExerciseScreen — render completo (R1–R6)", () => {
 
     await screen.findByRole("heading", { name: "Press de banca", level: 1 });
     expect(screen.queryByText("Última serie al fallo")).not.toBeInTheDocument();
+  });
+
+  it("05/R1: monta la sección 'Registro de series' bajo la info del detalle", async () => {
+    mockGetDetail.mockResolvedValue({ data: makeDetail(), error: null });
+
+    renderScreen();
+
+    expect(await screen.findByRole("heading", { name: "Registro de series" })).toBeInTheDocument();
+    // target_sets = 4 → cuatro filas de serie con su botón de guardar
+    expect(await screen.findAllByRole("button", { name: "Guardar serie" })).toHaveLength(4);
   });
 
   it("R6: la atribución de Gym Visual es visible y enlaza a gymvisual.com", async () => {
