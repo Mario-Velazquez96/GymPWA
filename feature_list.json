@@ -54,7 +54,7 @@
       "name": "07_pwa_install_and_cache",
       "description": "PWA polish: complete manifest (display standalone, Spanish name, icons, theme), iPhone/Safari install support ('Agregar a pantalla de inicio'), service worker precaching the app shell and runtime-caching viewed exercise GIFs/images (CacheFirst on the Supabase Storage bucket), so the day's routine loads fast on gym mobile data. Logs still require a connection (offline queue is explicitly out of scope).",
       "sdd": true,
-      "status": "spec_ready",
+      "status": "done",
       "depends_on": ["05_workout_logging"]
     }
   ]

@@ -11,25 +11,62 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "autoUpdate",
-      includeAssets: ["icon.svg"],
+      registerType: "autoUpdate", // R6: auto-actualiza el SW en la próxima carga
+      includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
         name: "Rutinas Gym",
-        short_name: "Rutinas Gym",
+        short_name: "Rutinas",
         description: "Tu rutina del gym, series y progreso",
         lang: "es",
         display: "standalone",
         start_url: "/",
         theme_color: "#0f172a",
         background_color: "#0f172a",
-        // Icono provisional — los íconos reales (192/512 PNG + apple-touch-icon)
-        // llegan en la feature 07_pwa_install_and_cache.
+        // R1: mancuerna blanca sobre fondo azul muy oscuro, generada por
+        // scripts/generate-icons.mjs desde public/icon.svg.
         icons: [
           {
-            src: "/icon.svg",
-            sizes: "any",
-            type: "image/svg+xml",
+            src: "/pwa-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
             purpose: "any",
+          },
+          {
+            src: "/pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "/pwa-maskable-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+        ],
+      },
+      workbox: {
+        // R3: precachea el shell (JS/CSS/HTML + assets base) y sirve el shell
+        // en navegaciones sin red.
+        globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        navigateFallback: "/index.html",
+        runtimeCaching: [
+          {
+            // R4/R7: solo el media de Supabase Storage (GIF/imágenes de
+            // ejercicios) se cachea con CacheFirst. Las rutas de API
+            // (/rest/, /auth/) no coinciden con ninguna regla → siempre red (R5).
+            urlPattern: ({ url }: { url: URL }) =>
+              url.hostname.endsWith(".supabase.co") &&
+              url.pathname.startsWith("/storage/"),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "exercise-media",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 días
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
           },
         ],
       },

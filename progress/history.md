@@ -176,3 +176,54 @@ it once; still idempotent); (2) isolated the history E2E on fixture exercise
 **'0002'** so its parallel writes/deletes never collide with the 05 spec that
 owns '0001'. Reviewer: **APPROVE** (`progress/review_06_history.md`). Details:
 `progress/impl_06_history.md`.
+
+## 2026-07-20 — 07_pwa_install_and_cache: implemented, reviewed, DONE (last feature)
+
+PWA polish over the `00` `vite-plugin-pwa` scaffold — no app-logic, service,
+SQL, or auth changes. **Manifest** completed in `vite.config.ts`: `name`
+"Rutinas Gym", `short_name` "Rutinas", `lang` "es", `display` "standalone",
+`start_url` "/", `theme_color`/`background_color` `#0f172a`, and a 192/512/
+512-maskable `icons` array (R1); `registerType: 'autoUpdate'` kept (R6).
+**Icons** generated from one source SVG (white dumbbell on dark blue `#0f172a`)
+by `scripts/generate-icons.mjs` — a **no-new-dependency** rasterizer using only
+Node built-ins (`zlib`/`fs`, 4x4 supersampling); outputs committed to `public/`:
+`apple-touch-icon.png` (180), `pwa-192x192.png`, `pwa-512x512.png`,
+`pwa-maskable-512x512.png` (maskable = full-bleed bg, glyph at 72% for the safe
+zone). **index.html**: `apple-touch-icon` link + iOS meta
+(`apple-mobile-web-app-capable`, `-status-bar-style` black-translucent,
+`-title` "Rutinas") (R2). **Workbox**: `globPatterns`
+(js/css/html/svg/png/woff2) precache the shell + `navigateFallback:
+'/index.html'` (R3); **one** `runtimeCaching` CacheFirst rule
+(`cacheName: 'exercise-media'`, `maxEntries: 100`, `maxAgeSeconds: 30d`) whose
+`urlPattern` matches only `*.supabase.co` + path `/storage/` (R4, R7) — **no rule
+matches `/rest/` or `/auth/`, verified absent in the built `dist/sw.js`** so plan
+data and logs stay network-only (R5). **README.md** (new, repo root): Spanish
+iPhone install section (Safari → Compartir → "Agregar a pantalla de inicio") +
+HTTPS/Vercel note, local-run steps, env vars. New `e2e/pwa.spec.ts` (3 specs vs
+`pnpm preview`): SW `activated` + manifest link/fields (R1/R3); a Storage URL
+fetched twice lands in the `exercise-media` cache via real SW-request
+interception with `context.route` + a synthetic 200 (deterministic, not a mock)
+(R4/R7); a `/rest/` response is absent from every cache (R5). Build-manifest
+assertion folded into e2e (unit tests run before build in `init.sh`, so reading
+`dist/` from Vitest would be non-deterministic). Zero migrations, zero new deps,
+zero new env vars. Gates: `./init.sh` and `./init.sh e2e` green — **11/11 e2e**,
+`dist/` emits `sw.js` + `workbox-*.js` + `manifest.webmanifest` (all R1 fields) +
+the 4 PNGs. Reviewer: **APPROVE** (`progress/review_07_pwa_install_and_cache.md`).
+Details: `progress/impl_07_pwa_install_and_cache.md`.
+**HUMAN-verify (not auto-verifiable):** the iPhone PWA checklist — install to
+home screen, standalone open, correct icon, airplane-mode shell + cached GIF,
+Lighthouse "installable" — see the checklist in
+`progress/impl_07_pwa_install_and_cache.md`.
+
+---
+
+### Project milestone: all 8 SDD features (00–07) DONE.
+
+Remaining open items (none block the build; all are external/human):
+- (a) **Human iPhone PWA checklist** above — requires a real iPhone + HTTPS deploy.
+- (b) **Cross-repo seed:** the `Gym` repo must seed the `exercises` catalog +
+  media and upload a real plan. Until then the app runs on the
+  `e2e/fixtures/test-plan.sql` 'Plan de prueba E2E' fixture with placeholder media.
+- (c) **RLS own-insert check:** re-run `node scripts/check-rls.mjs` after (b) to
+  complete the own-`user_id` insert check (currently SKIP — FK on `exercise_id`
+  against an empty catalog).
