@@ -2,20 +2,28 @@
 
 > Each task cites the requirement(s) it satisfies. Mark `[x]` as completed.
 
-- [ ] Extend `services/logs.ts` with `getExerciseHistory` (R1)
-- [ ] Extend `services/exercises.ts` with `getExercise` (R3, R8)
-- [ ] Implement `groupByDate` and `formatKg` pure helpers in `lib/utils.ts`
+- [x] Extend `services/logs.ts` with `getExerciseHistory` (R1)
+- [x] Extend `services/exercises.ts` with `getExercise` (R3, R8)
+- [x] Implement `groupByDate` and `formatKg` pure helpers in `lib/utils.ts`
       (R1, R2, R7)
-- [ ] Build `SessionCard` (Spanish date header + "Serie N — X kg × Y" rows)
+- [x] Build `SessionCard` (Spanish date header + "Serie N — X kg × Y" rows)
       (R2)
-- [ ] Build `HistoryScreen` with loading/empty/error/not-found states (R1,
+- [x] Build `HistoryScreen` with loading/empty/error/not-found states (R1,
       R3, R4, R6, R8)
-- [ ] Add "Ver historial" link (≥44px) to `ExerciseScreen` (R5, R7)
-- [ ] Unit tests: groupByDate, formatKg, history service (R1, R2, R6, R7)
-- [ ] Component tests: session ordering, set lines, title, empty, retry,
+- [x] Add "Ver historial" link (≥44px) to `ExerciseScreen` (R5, R7)
+- [x] Unit tests: groupByDate, formatKg, history service (R1, R2, R6, R7)
+- [x] Component tests: session ordering, set lines, title, empty, retry,
       not-found (R1–R4, R6, R8)
-- [ ] E2E: exercise → "Ver historial" → logged sets visible (R1, R5)
-- [ ] Run `./init.sh` + `./init.sh e2e`; all green
+- [x] E2E: exercise → "Ver historial" → logged sets visible (R1, R5)
+      — `e2e/history.spec.ts`: happy path RUNS (login → Hoy → ejercicio '0002'
+      → log serie → "Ver historial" → assert "X kg × Y") and cleans up its own
+      rows; R8 not-found test passes. Uses fixture exercise '0002' to avoid the
+      parallel data collision with 05's '0001'.
+- [x] Run `./init.sh` + `./init.sh e2e`; all green — both exit 0. Full: 252
+      unit/component tests + coverage + build. E2E: 8/8 specs pass (auth, today,
+      exercise, logging, history). Required re-anchoring the shared fixture on
+      the Mexico-City-local date (was UTC `current_date`) and isolating this
+      spec on exercise '0002'.
 
 ## Verification
 

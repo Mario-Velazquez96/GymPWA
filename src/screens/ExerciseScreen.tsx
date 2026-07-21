@@ -152,6 +152,13 @@ export default function ExerciseScreen() {
 
         <LoggingSection planExercise={detail} />
 
+        <Link
+          to={`/historial/${exercise.id}`}
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-700 bg-slate-800 px-6 text-base font-semibold text-slate-100 transition-colors hover:bg-slate-700"
+        >
+          Ver historial
+        </Link>
+
         <Attribution />
       </article>
     );

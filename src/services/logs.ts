@@ -15,6 +15,9 @@ export const LOGS_ERROR_LOAD = "No se pudieron cargar las series";
 /** Mensaje de fallo al guardar una serie — la fila queda editable (R6). */
 export const LOGS_ERROR_SAVE = "No se pudo guardar la serie, reintenta";
 
+/** Mensaje de fallo al cargar el historial de un ejercicio (06_history R6). */
+export const LOGS_ERROR_HISTORY = "No se pudo cargar el historial";
+
 /** Payload de inserción de una serie; `user_id` lo agrega el servicio (R5). */
 export interface NewLog {
   exercise_id: string;
@@ -106,6 +109,38 @@ export async function getSessionSets(
   } catch (thrown: unknown) {
     debugLogs("getSessionSets lanzó excepción:", thrown);
     return { data: null, error: LOGS_ERROR_LOAD };
+  }
+}
+
+/**
+ * Historial completo de un ejercicio del usuario autenticado (06_history R1):
+ * TODAS sus filas en `workout_logs`, ordenadas por `performed_at` desc y
+ * `set_number` asc, listas para agruparse por sesión en cliente (`groupByDate`).
+ * RLS acota las filas a `auth.uid()`; sin registros → lista vacía sin error.
+ */
+export async function getExerciseHistory(exerciseId: string): Promise<Result<WorkoutLog[]>> {
+  if (supabase === null) {
+    debugLogs("cliente supabase no configurado");
+    return { data: null, error: LOGS_ERROR_HISTORY };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("workout_logs")
+      .select("*")
+      .eq("exercise_id", exerciseId)
+      .order("performed_at", { ascending: false })
+      .order("set_number", { ascending: true });
+
+    if (error !== null) {
+      debugLogs("getExerciseHistory falló:", error);
+      return { data: null, error: LOGS_ERROR_HISTORY };
+    }
+
+    return { data: (data ?? []) as WorkoutLog[], error: null };
+  } catch (thrown: unknown) {
+    debugLogs("getExerciseHistory lanzó excepción:", thrown);
+    return { data: null, error: LOGS_ERROR_HISTORY };
   }
 }
 

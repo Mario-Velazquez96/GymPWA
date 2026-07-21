@@ -12,8 +12,16 @@
 -- ('0001'..'0003') y ON CONFLICT (id) DO NOTHING, para que el seed real del
 -- repo Gym pueda convivir/llegar después sin chocar.
 --
--- Fechas relativas a current_date para que "hoy" siempre caiga dentro del plan:
---   plan:            current_date - 3 .. current_date + 3  (prueba el clamping de flechas)
+-- ANCLA DE FECHA — Ciudad de México, no UTC:
+-- La app calcula "hoy" con la fecha LOCAL del dispositivo (todayLocalISO(),
+-- zona America/Mexico_City — requisito de la feature 03), pero el `current_date`
+-- de Postgres es UTC. Cuando UTC ya rodó al día siguiente y la fecha local aún
+-- no, anclar en `current_date` corre el plan un día y "hoy" cae en el día
+-- equivocado del fixture (rompe el e2e). Por eso todo se deriva de la fecha
+-- local de CDMX: `(now() AT TIME ZONE 'America/Mexico_City')::date`.
+--
+-- Fechas relativas a esa "hoy local" para que siempre caiga dentro del plan:
+--   plan:            hoy - 3 .. hoy + 3  (prueba el clamping de flechas)
 --   ayer:            día de entrenamiento (navegación hacia atrás)
 --   hoy:             día de entrenamiento con 3 ejercicios
 --   mañana:          día de descanso (is_rest, título 'Descanso')
@@ -48,6 +56,9 @@ declare
   v_user uuid;
   v_plan uuid;
   v_day_today uuid;
+  -- "Hoy" en la zona del dispositivo (CDMX), NO el current_date UTC de Postgres,
+  -- para que coincida con todayLocalISO() de la app.
+  v_today date := (now() at time zone 'America/Mexico_City')::date;
 begin
   select id into v_user from auth.users where email = 'mariovt860@gmail.com';
   if v_user is null then
@@ -59,16 +70,16 @@ begin
 
   insert into plans (user_id, name, goal, start_date, end_date, status)
   values (v_user, 'Plan de prueba E2E', 'Fixture para verificar 03_today_view',
-          current_date - 3, current_date + 3, 'active')
+          v_today - 3, v_today + 3, 'active')
   returning id into v_plan;
 
   -- Ayer: día de entrenamiento (sin ejercicios; prueba la flecha ‹)
   insert into plan_days (plan_id, day_date, title, is_rest)
-  values (v_plan, current_date - 1, 'Pierna (prueba)', false);
+  values (v_plan, v_today - 1, 'Pierna (prueba)', false);
 
   -- Hoy: día de entrenamiento con 3 ejercicios ordenados por position
   insert into plan_days (plan_id, day_date, title, is_rest)
-  values (v_plan, current_date, 'Pecho y espalda (prueba)', false)
+  values (v_plan, v_today, 'Pecho y espalda (prueba)', false)
   returning id into v_day_today;
 
   insert into plan_exercises
@@ -80,7 +91,7 @@ begin
 
   -- Mañana: descanso (estado "Día de descanso")
   insert into plan_days (plan_id, day_date, title, is_rest)
-  values (v_plan, current_date + 1, 'Descanso', true);
+  values (v_plan, v_today + 1, 'Descanso', true);
 end $$;
 
 commit;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PlanExerciseDetail } from "@/lib/types";
+import type { Exercise, PlanExerciseDetail } from "@/lib/types";
 
 /**
  * Cliente supabase mockeado en la frontera de services/ (R10): cada caso arma
@@ -22,7 +22,7 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
-import { EXERCISES_ERROR_LOAD, getPlanExerciseDetail } from "@/services/exercises";
+import { EXERCISES_ERROR_LOAD, getExercise, getPlanExerciseDetail } from "@/services/exercises";
 
 interface QueryResult {
   data: unknown;
@@ -68,6 +68,21 @@ const detailRow: PlanExerciseDetail = {
     gif_url: "https://storage.example/0001.gif",
     attribution: "Gym visual",
   },
+};
+
+const exerciseRow: Exercise = {
+  id: "0001",
+  name: "Press de banca",
+  body_part: "chest",
+  equipment: "barbell",
+  target: "pectorals",
+  muscle_group: "chest",
+  secondary_muscles: ["triceps"],
+  instructions_es: "Acuéstate en el banco y empuja la barra.",
+  instruction_steps_es: ["Acuéstate en el banco", "Baja la barra al pecho", "Empuja hasta arriba"],
+  image_url: "https://storage.example/0001.png",
+  gif_url: "https://storage.example/0001.gif",
+  attribution: "Gym visual",
 };
 
 beforeEach(() => {
@@ -130,6 +145,55 @@ describe("getPlanExerciseDetail (R1, R7, R10)", () => {
     mocks.holder.client = null;
 
     const result = await getPlanExerciseDetail("pe-1");
+
+    expect(result).toEqual({ data: null, error: EXERCISES_ERROR_LOAD });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+});
+
+describe("getExercise (06_history R3, R8)", () => {
+  it("R3: consulta exercises por id con maybeSingle y devuelve la fila completa", async () => {
+    const chain = stubDetailChain({ data: exerciseRow, error: null });
+
+    const result = await getExercise("0001");
+
+    expect(result).toEqual({ data: exerciseRow, error: null });
+    expect(mocks.from).toHaveBeenCalledWith("exercises");
+    expect(chain.select).toHaveBeenCalledWith("*");
+    expect(chain.eq).toHaveBeenCalledWith("id", "0001");
+    expect(chain.maybeSingle).toHaveBeenCalledTimes(1);
+  });
+
+  it("R8: id inexistente devuelve { data: null, error: null } (no encontrado)", async () => {
+    stubDetailChain({ data: null, error: null });
+
+    const result = await getExercise("9999");
+
+    expect(result).toEqual({ data: null, error: null });
+  });
+
+  it("mapea un error de supabase al mensaje en español (nunca el crudo)", async () => {
+    stubDetailChain({ data: null, error: { message: "raw postgrest error" } });
+
+    const result = await getExercise("0001");
+
+    expect(result.data).toBeNull();
+    expect(result.error).toBe(EXERCISES_ERROR_LOAD);
+    expect(result.error).not.toContain("raw");
+  });
+
+  it("mapea una excepción de red al mensaje en español", async () => {
+    stubDetailChain(new TypeError("Failed to fetch"));
+
+    const result = await getExercise("0001");
+
+    expect(result).toEqual({ data: null, error: EXERCISES_ERROR_LOAD });
+  });
+
+  it("con cliente no configurado (null) devuelve el error sin llamar a la red", async () => {
+    mocks.holder.client = null;
+
+    const result = await getExercise("0001");
 
     expect(result).toEqual({ data: null, error: EXERCISES_ERROR_LOAD });
     expect(mocks.from).not.toHaveBeenCalled();

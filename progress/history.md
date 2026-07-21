@@ -142,3 +142,37 @@ the spec (the app services have no delete, by design), with clean skips when
 credentials or the fixture plan are absent. Reviewer: **APPROVE**
 (`progress/review_05_workout_logging.md`). Details:
 `progress/impl_05_workout_logging.md`.
+
+## 2026-07-20 — 06_history: implemented, reviewed, DONE
+
+Per-exercise history screen (RF-5, read-only) at `/historial/:exerciseId`:
+sessions grouped by `performed_at` **newest-first**, each rendered as a
+`SessionCard` with a Spanish date header incl. year ("lun 3 ago 2026") and rows
+"Serie N — X kg × Y"; states loading / error + "Reintentar" / empty ("Aún no
+hay registros de este ejercicio", header still rendered) / not-found
+("Ejercicio no encontrado" + "Volver a Hoy"). Added a "Ver historial" link
+(≥ 44px) on the exercise screen pointing to `/historial/{exercise.id}` (the
+embedded `exercises.id`, not the `plan_exercise.id`). Extended existing services
+(no new `supabase.from` surfaces beyond the read): `services/logs.ts#getExerciseHistory`
+(`workout_logs` by `exercise_id`, `performed_at` desc + `set_number` asc,
+RLS-scoped) and `services/exercises.ts#getExercise` (`exercises` by id via
+`maybeSingle` → `Exercise | null` for title + not-found). New pure helpers in
+`lib/utils.ts`: `groupByDate` (Map-based, preserves newest-first order) and
+`formatKg` ("22 kg" / "22.5 kg"), plus a `{ year: true }` option on
+`formatDateEs` (default output unchanged). Zero writes beyond the existing
+logging path, zero migrations, zero new deps/env vars. Gates: `./init.sh` and
+`./init.sh e2e` green — **252 tests / 25 files**, coverage **100% lines on
+`lib/utils.ts`, `services/logs.ts`, `services/exercises.ts`, and
+`screens/HistoryScreen.tsx`** (global 97.8%); **8/8 E2E** incl. new
+`e2e/history.spec.ts` (happy path against the live DB: log a set → "Ver
+historial" → assert "X kg × Y" → self-cleanup via authenticated REST; plus the
+bogus-id not-found path). Two **test-infra** fixes along the way (no app code
+changed, no test weakened): (1) re-anchored the shared `e2e/fixtures/test-plan.sql`
+on the **device-local (America/Mexico_City)** date —
+`v_today := (now() at time zone 'America/Mexico_City')::date` with all
+`start/end/day_date` derived from it — because Postgres `current_date` (UTC)
+drifts vs the app's `todayLocalISO()` and misaligned "today" (human re-applied
+it once; still idempotent); (2) isolated the history E2E on fixture exercise
+**'0002'** so its parallel writes/deletes never collide with the 05 spec that
+owns '0001'. Reviewer: **APPROVE** (`progress/review_06_history.md`). Details:
+`progress/impl_06_history.md`.

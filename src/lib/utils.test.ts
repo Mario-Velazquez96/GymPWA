@@ -1,5 +1,29 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { addDaysISO, clampISO, formatDateEs, todayLocalISO } from "@/lib/utils";
+import type { WorkoutLog } from "@/lib/types";
+import {
+  addDaysISO,
+  clampISO,
+  formatDateEs,
+  formatKg,
+  groupByDate,
+  todayLocalISO,
+} from "@/lib/utils";
+
+/** Fila mínima de workout_logs para los tests de agrupación (06_history). */
+function makeLog(overrides: Partial<WorkoutLog> = {}): WorkoutLog {
+  return {
+    id: "log-1",
+    user_id: "user-1",
+    exercise_id: "0001",
+    plan_exercise_id: "pe-1",
+    performed_at: "2026-08-03",
+    set_number: 1,
+    reps: 10,
+    weight_kg: 22.5,
+    created_at: "2026-08-03T18:00:00Z",
+    ...overrides,
+  };
+}
 
 afterEach(() => {
   vi.useRealTimers();
@@ -51,6 +75,76 @@ describe("formatDateEs (R2 — 'lun 3 ago' en es-MX)", () => {
     // en el día anterior (domingo 2). El formateo debe seguir siendo lunes 3.
     expect(formatDateEs("2026-08-03")).toContain("3");
     expect(formatDateEs("2026-08-03")).toContain("lun");
+  });
+
+  it("con { year: true } agrega el año: 'lun 3 ago 2026' (06_history R2)", () => {
+    expect(formatDateEs("2026-08-03", { year: true })).toBe("lun 3 ago 2026");
+  });
+
+  it("con { year: false } se comporta como sin opciones (sin año)", () => {
+    expect(formatDateEs("2026-08-03", { year: false })).toBe("lun 3 ago");
+  });
+});
+
+describe("formatKg (06_history R2, R7 — peso con unidad)", () => {
+  it("un peso entero se formatea sin decimales: '22 kg'", () => {
+    expect(formatKg(22)).toBe("22 kg");
+  });
+
+  it("un peso fraccionario conserva el medio kilo: '22.5 kg'", () => {
+    expect(formatKg(22.5)).toBe("22.5 kg");
+  });
+
+  it("cero se formatea como '0 kg'", () => {
+    expect(formatKg(0)).toBe("0 kg");
+  });
+
+  it("redondea a dos decimales y elimina ceros de cola", () => {
+    expect(formatKg(20.0)).toBe("20 kg");
+    expect(formatKg(7.25)).toBe("7.25 kg");
+  });
+});
+
+describe("groupByDate (06_history R1 — sesiones por performed_at)", () => {
+  it("una lista vacía produce cero sesiones", () => {
+    expect(groupByDate([])).toEqual([]);
+  });
+
+  it("agrupa varias series del mismo día en una sola sesión, en orden de entrada", () => {
+    const s1 = makeLog({ id: "a", performed_at: "2026-08-03", set_number: 1 });
+    const s2 = makeLog({ id: "b", performed_at: "2026-08-03", set_number: 2 });
+    const s3 = makeLog({ id: "c", performed_at: "2026-08-03", set_number: 3 });
+
+    const sessions = groupByDate([s1, s2, s3]);
+
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0].date).toBe("2026-08-03");
+    expect(sessions[0].sets).toEqual([s1, s2, s3]);
+  });
+
+  it("separa días distintos en sesiones distintas preservando el orden newest-first", () => {
+    // La consulta trae performed_at desc: el más reciente primero.
+    const newA = makeLog({ id: "a", performed_at: "2026-08-05", set_number: 1 });
+    const newB = makeLog({ id: "b", performed_at: "2026-08-05", set_number: 2 });
+    const oldA = makeLog({ id: "c", performed_at: "2026-08-01", set_number: 1 });
+
+    const sessions = groupByDate([newA, newB, oldA]);
+
+    expect(sessions.map((s) => s.date)).toEqual(["2026-08-05", "2026-08-01"]);
+    expect(sessions[0].sets).toEqual([newA, newB]);
+    expect(sessions[1].sets).toEqual([oldA]);
+  });
+
+  it("reagrupa filas de la misma fecha aunque lleguen no contiguas (robustez)", () => {
+    const d1a = makeLog({ id: "a", performed_at: "2026-08-05", set_number: 1 });
+    const d2 = makeLog({ id: "b", performed_at: "2026-08-01", set_number: 1 });
+    const d1b = makeLog({ id: "c", performed_at: "2026-08-05", set_number: 2 });
+
+    const sessions = groupByDate([d1a, d2, d1b]);
+
+    expect(sessions.map((s) => s.date)).toEqual(["2026-08-05", "2026-08-01"]);
+    expect(sessions[0].sets).toEqual([d1a, d1b]);
+    expect(sessions[1].sets).toEqual([d2]);
   });
 });
 

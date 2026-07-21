@@ -47,7 +47,7 @@
       "name": "06_history",
       "description": "Pantalla de historial: per-exercise evolution of weight and reps over time from workout_logs, ordered by date, so Mario can see progression across weeks (RF-5 historial).",
       "sdd": true,
-      "status": "spec_ready",
+      "status": "done",
       "depends_on": ["05_workout_logging"]
     },
     {

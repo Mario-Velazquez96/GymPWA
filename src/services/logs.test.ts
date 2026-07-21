@@ -24,8 +24,10 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 import {
+  LOGS_ERROR_HISTORY,
   LOGS_ERROR_LOAD,
   LOGS_ERROR_SAVE,
+  getExerciseHistory,
   getPreviousSession,
   getSessionSets,
   logSet,
@@ -71,6 +73,22 @@ function stubSessionChain(result: QueryResult | Error): {
   const select = vi.fn().mockReturnValue({ eq: eqExercise });
   mocks.from.mockReturnValue({ select });
   return { select, eqExercise, eqDate, order };
+}
+
+/** Cadena select().eq().order().order() (forma de getExerciseHistory). */
+function stubHistoryChain(result: QueryResult | Error): {
+  select: Mock;
+  eq: Mock;
+  orderDate: Mock;
+  orderSet: Mock;
+} {
+  const orderSet =
+    result instanceof Error ? vi.fn().mockRejectedValue(result) : vi.fn().mockResolvedValue(result);
+  const orderDate = vi.fn().mockReturnValue({ order: orderSet });
+  const eq = vi.fn().mockReturnValue({ order: orderDate });
+  const select = vi.fn().mockReturnValue({ eq });
+  mocks.from.mockReturnValue({ select });
+  return { select, eq, orderDate, orderSet };
 }
 
 /** Cadena insert().select().single() (forma de logSet). */
@@ -247,6 +265,69 @@ describe("getSessionSets (R8, R9)", () => {
     const result = await getSessionSets("0001", "2026-07-19");
 
     expect(result).toEqual({ data: null, error: LOGS_ERROR_LOAD });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+});
+
+describe("getExerciseHistory (06_history R1, R6)", () => {
+  it("consulta workout_logs por exercise_id, order performed_at desc + set_number asc", async () => {
+    const rows = [
+      makeLog({ id: "a", performed_at: "2026-08-05", set_number: 1 }),
+      makeLog({ id: "b", performed_at: "2026-08-05", set_number: 2 }),
+      makeLog({ id: "c", performed_at: "2026-08-01", set_number: 1 }),
+    ];
+    const chain = stubHistoryChain({ data: rows, error: null });
+
+    const result = await getExerciseHistory("0001");
+
+    expect(result).toEqual({ data: rows, error: null });
+    expect(mocks.from).toHaveBeenCalledWith("workout_logs");
+    expect(chain.select).toHaveBeenCalledWith("*");
+    expect(chain.eq).toHaveBeenCalledWith("exercise_id", "0001");
+    expect(chain.orderDate).toHaveBeenCalledWith("performed_at", { ascending: false });
+    expect(chain.orderSet).toHaveBeenCalledWith("set_number", { ascending: true });
+  });
+
+  it("sin registros devuelve lista vacía sin error (estado vacío de la pantalla)", async () => {
+    stubHistoryChain({ data: [], error: null });
+
+    const result = await getExerciseHistory("0001");
+
+    expect(result).toEqual({ data: [], error: null });
+  });
+
+  it("normaliza data null a lista vacía", async () => {
+    stubHistoryChain({ data: null, error: null });
+
+    const result = await getExerciseHistory("0001");
+
+    expect(result).toEqual({ data: [], error: null });
+  });
+
+  it("mapea un error de supabase a 'No se pudo cargar el historial' (nunca el crudo)", async () => {
+    stubHistoryChain({ data: null, error: { message: "raw postgrest error" } });
+
+    const result = await getExerciseHistory("0001");
+
+    expect(result.data).toBeNull();
+    expect(result.error).toBe(LOGS_ERROR_HISTORY);
+    expect(result.error).not.toContain("raw");
+  });
+
+  it("mapea una excepción de red al mensaje en español", async () => {
+    stubHistoryChain(new TypeError("Failed to fetch"));
+
+    const result = await getExerciseHistory("0001");
+
+    expect(result).toEqual({ data: null, error: LOGS_ERROR_HISTORY });
+  });
+
+  it("con cliente no configurado devuelve el error sin llamar a la red", async () => {
+    mocks.holder.client = null;
+
+    const result = await getExerciseHistory("0001");
+
+    expect(result).toEqual({ data: null, error: LOGS_ERROR_HISTORY });
     expect(mocks.from).not.toHaveBeenCalled();
   });
 });

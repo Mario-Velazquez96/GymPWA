@@ -176,6 +176,17 @@ describe("ExerciseScreen — render completo (R1–R6)", () => {
     expect(await screen.findAllByRole("button", { name: "Guardar serie" })).toHaveLength(4);
   });
 
+  it("06/R5: el enlace 'Ver historial' apunta a /historial/{exercise_id} con target ≥ 44px", async () => {
+    mockGetDetail.mockResolvedValue({ data: makeDetail(), error: null });
+
+    renderScreen();
+
+    const link = await screen.findByRole("link", { name: "Ver historial" });
+    // Usa el id del ejercicio ('0001'), no el del plan_exercise ('pe-1').
+    expect(link).toHaveAttribute("href", "/historial/0001");
+    expect(link).toHaveClass("min-h-11");
+  });
+
   it("R6: la atribución de Gym Visual es visible y enlaza a gymvisual.com", async () => {
     mockGetDetail.mockResolvedValue({ data: makeDetail(), error: null });
 
