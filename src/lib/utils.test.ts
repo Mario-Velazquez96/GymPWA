@@ -1,13 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkoutLog } from "@/lib/types";
-import {
-  addDaysISO,
-  clampISO,
-  formatDateEs,
-  formatKg,
-  groupByDate,
-  todayLocalISO,
-} from "@/lib/utils";
+import { addDaysISO, clampISO, formatDateEs, groupByDate, todayLocalISO } from "@/lib/utils";
 
 /** Fila mínima de workout_logs para los tests de agrupación (06_history). */
 function makeLog(overrides: Partial<WorkoutLog> = {}): WorkoutLog {
@@ -83,25 +76,6 @@ describe("formatDateEs (R2 — 'lun 3 ago' en es-MX)", () => {
 
   it("con { year: false } se comporta como sin opciones (sin año)", () => {
     expect(formatDateEs("2026-08-03", { year: false })).toBe("lun 3 ago");
-  });
-});
-
-describe("formatKg (06_history R2, R7 — peso con unidad)", () => {
-  it("un peso entero se formatea sin decimales: '22 kg'", () => {
-    expect(formatKg(22)).toBe("22 kg");
-  });
-
-  it("un peso fraccionario conserva el medio kilo: '22.5 kg'", () => {
-    expect(formatKg(22.5)).toBe("22.5 kg");
-  });
-
-  it("cero se formatea como '0 kg'", () => {
-    expect(formatKg(0)).toBe("0 kg");
-  });
-
-  it("redondea a dos decimales y elimina ceros de cola", () => {
-    expect(formatKg(20.0)).toBe("20 kg");
-    expect(formatKg(7.25)).toBe("7.25 kg");
   });
 });
 

@@ -1,4 +1,5 @@
 import type { WorkoutLog } from "@/lib/types";
+import { WEIGHT_STEP, fromKg, validateWeight, type WeightUnit } from "@/lib/units";
 
 /**
  * Lógica pura del registro de series (05_workout_logging): validación (R7),
@@ -6,8 +7,8 @@ import type { WorkoutLog } from "@/lib/types";
  * a datos ni a React — unit-testeable al 100%.
  */
 
-/** Paso del stepper de peso (R4). */
-export const WEIGHT_STEP_KG = 2.5;
+/** Paso del stepper de peso en kg (R4); alias de `WEIGHT_STEP.kg` (08 R4). */
+export const WEIGHT_STEP_KG = WEIGHT_STEP.kg;
 /** Paso del stepper de repeticiones (R4). */
 export const REPS_STEP = 1;
 /** Fallback de reps cuando `target_reps` no trae ningún número (R3). */
@@ -30,11 +31,6 @@ export interface SetRowState extends SetValues {
   message: string | null;
 }
 
-/** "22.5" / "20" — peso en kg sin ceros de cola (formato consistente en la app). */
-export function formatKg(value: number): string {
-  return String(Math.round(value * 100) / 100);
-}
-
 /**
  * Primer número de `target_reps` ("8-12" → 8, "5" → 5); `null` si no hay
  * número utilizable ("al fallo") o si es < 1 (R3).
@@ -49,16 +45,20 @@ export function firstNumber(text: string): number | null {
 }
 
 /**
- * Validación cliente antes del insert (R7): peso ≥ 0 en pasos de 0.5 kg y
- * reps entero ≥ 1. Devuelve el mensaje en español de la primera violación, o
- * `null` si los valores son válidos. Los checks de la BD (01) son el respaldo.
+ * Validación cliente antes del insert (R7): reps entero ≥ 1 y peso válido **en
+ * la unidad en la que el usuario lo capturó** (08 R9) — `weight_kg` siempre
+ * llega en kilogramos, se lee en `unit` y se valida contra la rejilla de esa
+ * unidad (0.5 kg / 0.1 lb). Con `unit = "kg"` (default) el comportamiento es
+ * exactamente el de 05. Devuelve el mensaje en español de la primera
+ * violación, o `null`. Los checks de la BD (01) son el respaldo.
  */
-export function validateSet({ weight_kg, reps }: SetValues): string | null {
-  if (!Number.isFinite(weight_kg) || weight_kg < 0) {
-    return "El peso no puede ser negativo";
-  }
-  if (!Number.isInteger(weight_kg * 2)) {
-    return "El peso debe ir en pasos de 0.5 kg";
+export function validateSet(
+  { weight_kg, reps }: SetValues,
+  unit: WeightUnit = "kg",
+): string | null {
+  const weightViolation = validateWeight(fromKg(weight_kg, unit), unit);
+  if (weightViolation !== null) {
+    return weightViolation;
   }
   if (!Number.isInteger(reps) || reps < 1) {
     return "Las repeticiones deben ser un entero de 1 o más";

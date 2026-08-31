@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { Exercise, WorkoutLog } from "@/lib/types";
+import { UNIT_STORAGE_PREFIX } from "@/lib/units";
 
 /** Services mockeados en su frontera (R7); ningún supabase.from en la pantalla. */
 vi.mock("@/services/exercises", () => ({
@@ -68,6 +69,7 @@ function renderScreen(exerciseId = "0001") {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear(); // 08: la preferencia de unidad vive en el dispositivo
   mockGetExercise.mockResolvedValue({ data: makeExercise(), error: null });
   mockGetHistory.mockResolvedValue({ data: [], error: null });
 });
@@ -118,9 +120,7 @@ describe("HistoryScreen — estados vacío / no encontrado (06_history R4, R8)",
 
     renderScreen();
 
-    expect(
-      await screen.findByText("Aún no hay registros de este ejercicio"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Aún no hay registros de este ejercicio")).toBeInTheDocument();
     // El encabezado con el nombre del ejercicio sigue renderizando (R4).
     expect(screen.getByRole("heading", { name: "Press de banca", level: 1 })).toBeInTheDocument();
   });
@@ -189,5 +189,56 @@ describe("HistoryScreen — carga y error (06_history R6)", () => {
     expect(back).toHaveAttribute("href", "/");
     expect(back).toHaveClass("min-h-11");
     expect(back).toHaveClass("min-w-11");
+  });
+});
+
+describe("HistoryScreen — unidad por ejercicio (08 R12, R15)", () => {
+  it("R12: sin preferencia guardada las sesiones se leen en kg, como en 06", async () => {
+    mockGetHistory.mockResolvedValue({
+      data: [makeLog({ weight_kg: 22.5, reps: 10 })],
+      error: null,
+    });
+
+    renderScreen("0001");
+
+    expect(await screen.findByText("Serie 1 — 22.5 kg × 10")).toBeInTheDocument();
+  });
+
+  it("R12: con 'lb' guardado para el ejercicio las sesiones se leen en libras", async () => {
+    localStorage.setItem(`${UNIT_STORAGE_PREFIX}0003`, "lb");
+    mockGetHistory.mockResolvedValue({
+      data: [makeLog({ exercise_id: "0003", weight_kg: 20.41, reps: 10 })],
+      error: null,
+    });
+
+    renderScreen("0003");
+
+    expect(await screen.findByText("Serie 1 — 45 lb × 10")).toBeInTheDocument();
+    expect(screen.queryByText("Serie 1 — 20.41 kg × 10")).not.toBeInTheDocument();
+  });
+
+  it("R12: la preferencia es por ejercicio — otro id sigue en kg", async () => {
+    localStorage.setItem(`${UNIT_STORAGE_PREFIX}0003`, "lb");
+    mockGetHistory.mockResolvedValue({
+      data: [makeLog({ weight_kg: 22.5, reps: 10 })],
+      error: null,
+    });
+
+    renderScreen("0001");
+
+    expect(await screen.findByText("Serie 1 — 22.5 kg × 10")).toBeInTheDocument();
+  });
+
+  it("R12: la pantalla NO lleva toggle propio de unidad", async () => {
+    localStorage.setItem(`${UNIT_STORAGE_PREFIX}0003`, "lb");
+    mockGetHistory.mockResolvedValue({
+      data: [makeLog({ exercise_id: "0003", weight_kg: 20.41, reps: 10 })],
+      error: null,
+    });
+
+    renderScreen("0003");
+
+    await screen.findByText("Serie 1 — 45 lb × 10");
+    expect(screen.queryByRole("group", { name: "Unidad de peso" })).not.toBeInTheDocument();
   });
 });

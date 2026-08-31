@@ -1,4 +1,6 @@
 import SetRow from "@/components/SetRow";
+import UnitToggle from "@/components/UnitToggle";
+import { useExerciseUnit } from "@/hooks/useExerciseUnit";
 import { useWorkoutLog } from "@/hooks/useWorkoutLog";
 import type { PlanExercise } from "@/lib/types";
 
@@ -12,14 +14,24 @@ interface LoggingSectionProps {
  * prefill (R3) y guardado inmediato por serie (R5). Estados explícitos de
  * carga y error con "Reintentar"; al reabrir el mismo día las series ya
  * guardadas se renderizan como guardadas (R8).
+ *
+ * La unidad de captura (kg/lb) es una preferencia por ejercicio guardada en el
+ * dispositivo (08 R1, R2): el toggle vive junto al encabezado y solo cambia
+ * entrada y presentación — el estado y lo que se inserta siguen en kg (08 R14).
  */
 export default function LoggingSection({ planExercise }: LoggingSectionProps) {
-  const { loading, error, previous, rows, retry, updateRow, saveRow, addRow } =
-    useWorkoutLog(planExercise);
+  const [unit, setUnit] = useExerciseUnit(planExercise.exercise_id);
+  const { loading, error, previous, rows, retry, updateRow, saveRow, addRow } = useWorkoutLog(
+    planExercise,
+    unit,
+  );
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold text-slate-100">Registro de series</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold text-slate-100">Registro de series</h2>
+        <UnitToggle unit={unit} onChange={setUnit} />
+      </div>
 
       {loading && (
         <p role="status" className="animate-pulse py-4 text-center text-base text-slate-300">
@@ -50,6 +62,7 @@ export default function LoggingSection({ planExercise }: LoggingSectionProps) {
                 key={row.setNumber}
                 row={row}
                 previous={previous.find((log) => log.set_number === row.setNumber) ?? null}
+                unit={unit}
                 onWeightChange={(value) => updateRow(row.setNumber, { weight_kg: value })}
                 onRepsChange={(value) => updateRow(row.setNumber, { reps: value })}
                 onSave={() => void saveRow(row.setNumber)}

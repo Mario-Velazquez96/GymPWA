@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildInitialRows,
-  firstNumber,
-  formatKg,
-  resolvePrefill,
-  validateSet,
-} from "@/lib/logging";
+import { buildInitialRows, firstNumber, resolvePrefill, validateSet } from "@/lib/logging";
 import type { WorkoutLog } from "@/lib/types";
 
 function makeLog(overrides: Partial<WorkoutLog> = {}): WorkoutLog {
@@ -50,6 +44,56 @@ describe("validateSet — matriz de validación (R7)", () => {
 
   it("con varias violaciones reporta primero la del peso", () => {
     expect(validateSet({ weight_kg: -1, reps: 0 })).toBe("El peso no puede ser negativo");
+  });
+});
+
+describe("validateSet — unidad activa (08 R9, R15)", () => {
+  it("sin segundo argumento se comporta exactamente como en 05 (kg)", () => {
+    expect(validateSet({ weight_kg: 22.5, reps: 10 })).toBeNull();
+    expect(validateSet({ weight_kg: 22.3, reps: 10 })).toBe("El peso debe ir en pasos de 0.5 kg");
+    expect(validateSet({ weight_kg: 22.5, reps: 10 }, "kg")).toBe(
+      validateSet({ weight_kg: 22.5, reps: 10 }),
+    );
+  });
+
+  it("con 'lb' acepta 20.41 kg (45 lb) aunque no sea múltiplo de 0.5 kg", () => {
+    expect(validateSet({ weight_kg: 20.41, reps: 10 }, "lb")).toBeNull();
+    // El mismo peso capturado en kg sigue siendo inválido (regla de 05 intacta).
+    expect(validateSet({ weight_kg: 20.41, reps: 10 }, "kg")).toBe(
+      "El peso debe ir en pasos de 0.5 kg",
+    );
+  });
+
+  it.each([
+    [0], // 0 lb
+    [1.13], // 2.5 lb
+    [20.41], // 45 lb
+    [61.23], // 135 lb
+    [102.06], // 225 lb
+  ])("con 'lb' acepta el kg convertido %d de un peso de placa habitual", (weight_kg) => {
+    expect(validateSet({ weight_kg, reps: 8 }, "lb")).toBeNull();
+  });
+
+  it("con 'lb' NO aplica la regla de 0.5 kg a un peso heredado en kg (R9)", () => {
+    // Peso prellenado desde una sesión en kg (22.5 kg = 49.6 lb): en lb es
+    // válido tal cual; la lectura en lb cae siempre sobre la rejilla de 0.1 lb.
+    expect(validateSet({ weight_kg: 22.5, reps: 10 }, "lb")).toBeNull();
+    expect(validateSet({ weight_kg: 20.435, reps: 10 }, "lb")).toBeNull();
+  });
+
+  it("con 'lb' sigue rechazando negativos, no finitos y reps inválidas", () => {
+    expect(validateSet({ weight_kg: -20.41, reps: 10 }, "lb")).toBe(
+      "El peso no puede ser negativo",
+    );
+    expect(validateSet({ weight_kg: Number.NaN, reps: 10 }, "lb")).toBe(
+      "El peso no puede ser negativo",
+    );
+    expect(validateSet({ weight_kg: 20.41, reps: 0 }, "lb")).toBe(
+      "Las repeticiones deben ser un entero de 1 o más",
+    );
+    expect(validateSet({ weight_kg: 20.41, reps: 8.5 }, "lb")).toBe(
+      "Las repeticiones deben ser un entero de 1 o más",
+    );
   });
 });
 
@@ -189,16 +233,5 @@ describe("buildInitialRows (R1, R3, R8)", () => {
 
     expect(rows).toHaveLength(5);
     expect(rows.every((row) => row.status === "saved")).toBe(true);
-  });
-});
-
-describe("formatKg", () => {
-  it.each([
-    [22.5, "22.5"],
-    [20, "20"],
-    [0, "0"],
-    [102.75, "102.75"],
-  ])("%d → '%s'", (value, expected) => {
-    expect(formatKg(value)).toBe(expected);
   });
 });

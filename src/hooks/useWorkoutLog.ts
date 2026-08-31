@@ -7,6 +7,7 @@ import {
   type SetValues,
 } from "@/lib/logging";
 import type { PlanExercise, WorkoutLog } from "@/lib/types";
+import type { WeightUnit } from "@/lib/units";
 import { todayLocalISO } from "@/lib/utils";
 import { getPreviousSession, getSessionSets, logSet } from "@/services/logs";
 
@@ -42,8 +43,16 @@ interface LoadedResult {
  * filas con la cadena de prefill (R1, R3) y gobierna la máquina de estados por
  * fila. El guard de doble-tap es un `Set` síncrono en ref: dos taps antes del
  * re-render no pueden producir dos inserts (R10).
+ *
+ * `unit` (08 R9) es solo la unidad en la que el usuario está capturando: las
+ * filas y el payload de `logSet` siguen siendo kilogramos canónicos (08 R14);
+ * lo único que cambia es contra qué rejilla valida `validateSet`. Cambiar de
+ * unidad NO recarga ni resetea las filas (08 R11).
  */
-export function useWorkoutLog(planExercise: PlanExercise): WorkoutLogState {
+export function useWorkoutLog(
+  planExercise: PlanExercise,
+  unit: WeightUnit = "kg",
+): WorkoutLogState {
   const [attempt, setAttempt] = useState(0);
   const [loaded, setLoaded] = useState<LoadedResult | null>(null);
   const [rows, setRows] = useState<SetRowState[]>([]);
@@ -129,7 +138,7 @@ export function useWorkoutLog(planExercise: PlanExercise): WorkoutLogState {
         return;
       }
 
-      const violation = validateSet({ weight_kg: row.weight_kg, reps: row.reps });
+      const violation = validateSet({ weight_kg: row.weight_kg, reps: row.reps }, unit);
       if (violation !== null) {
         patchRow(setNumber, { status: "error", message: violation }); // R7
         return;
@@ -161,7 +170,7 @@ export function useWorkoutLog(planExercise: PlanExercise): WorkoutLogState {
         reps: result.data.reps,
       });
     },
-    [exercise_id, planExerciseId, patchRow],
+    [exercise_id, planExerciseId, patchRow, unit],
   );
 
   const addRow = useCallback((): void => {

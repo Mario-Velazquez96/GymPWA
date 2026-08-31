@@ -227,3 +227,67 @@ Remaining open items (none block the build; all are external/human):
 - (c) **RLS own-insert check:** re-run `node scripts/check-rls.mjs` after (b) to
   complete the own-`user_id` insert check (currently SKIP — FK on `exercise_id`
   against an empty catalog).
+
+---
+
+## 2026-08-31 — 08_weight_units: implemented, reviewed, DONE
+
+Per-exercise **kg/lb** preference so the dumbbells and machines marked in pounds
+stop needing mental arithmetic between sets. New pure module `src/lib/units.ts`
+(`WeightUnit`, exact `LB_IN_KG = 0.45359237`, `WEIGHT_STEP` kg 2.5 / lb 5,
+`WEIGHT_GRAIN` kg 0.5 / lb 0.1, `toKg`/`fromKg`/`quantize`/`formatWeight`/
+`validateWeight`, plus `readExerciseUnit`/`writeExerciseUnit` with **every**
+`localStorage` access in `try/catch` → degrades to kg, writes fail silently);
+new `useExerciseUnit(exerciseId)` hook (lazy init, re-reads on id change, state
+adjusted during render — ESLint 10 forbids `setState` in an effect) and new
+`UnitToggle` (role=group "Unidad de peso", `aria-pressed`, ≥44px) rendered next
+to "Registro de series". `SetRow` shows `fromKg(row.weight_kg, unit)` with
+`step = WEIGHT_STEP[unit]` and returns `toKg(quantize(v, unit), unit)`, so the
+row state and the insert payload **stay in kilograms**; "Anterior", saved rows,
+`SessionCard` and `HistoryScreen` (read-only, **no toggle of its own**) all
+render through `formatWeight`. `validateSet(values, unit = "kg")` now validates
+the weight **in the unit it was typed in** — 45 lb = 20.41 kg saves fine, the
+0.5-kg rule is not applied in lb mode — and `lib/utils.ts#formatKg` was removed
+once it had no production callers. Rounding is round-trip stable: entry
+`round2(lb × 0.45359237)`, display `round1(kg ÷ 0.45359237)`, asserted over the
+whole 0.1-lb grid from 0 to 320 lb, so "45 lb" never becomes "45.0001 lb".
+**Zero SQL migrations, zero RLS changes, zero new columns, zero new deps/env
+vars, no service-worker change:** `workout_logs.weight_kg` keeps meaning
+kilograms, so the `Gym`-repo contract (solution_design §3.5) is untouched — a
+set logged as 45 lb is stored as 20.41. Gates: `./init.sh` green (404 tests /
+28 files; `units.ts`, `useExerciseUnit.ts`, `UnitToggle.tsx`, `logging.ts` at
+100% lines, global 98%) and `./init.sh e2e` green **12/12** against the live
+project. Reviewer: **APPROVE** (`progress/review_08_weight_units.md`) with
+live-data evidence: 154 `workout_logs` before and after, 0 rows carrying the
+test signature, the real plan untouched. Details:
+`progress/impl_08_weight_units.md`.
+
+### Durable note — E2E safety against LIVE data (introduced here, applies to every future feature)
+
+The database stopped being a test database mid-feature: the `Gym` repo seeded
+the real 1324-exercise catalog with real Storage media, a **real plan is active**
+("Recomposición en casa — Septiembre 2026", 2026-08-29 → 2026-09-27) and the
+user has ~154 real `workout_logs`. The old E2E pattern (hardcoded fixture
+exercises `'0001'`/`'0002'` + `DELETE workout_logs?exercise_id=eq.<id>&
+performed_at=eq.<today>`) would have written test sets into the user's real
+exercise of the day and deleted rows he logged himself. It was replaced by
+`e2e/helpers.ts`:
+
+- **ID-precise cleanup.** `snapshotLogs()` photographs the existing row ids for
+  (exercise, date) before writing; `deleteCreatedLogs()` in an `afterEach` (so it
+  runs even when an assertion fails mid-test) deletes **only the ids that
+  appeared afterwards** via `?id=in.(…)`. Never a delete filtered by
+  exercise/date. A safety cap aborts without deleting anything if more new rows
+  show up than a spec can create.
+- **Plan-agnostic targets.** The exercise is derived from the DOM (n-th card of
+  Hoy → `exercise_id` read off the "Ver historial" link): 05 uses the 1st, 06 the
+  2nd, 08 the 3rd, so parallel runs never collide. 03 and 04 were made
+  plan-agnostic too (they asserted fixture literals that no longer exist).
+- **Robust to real history.** "Anterior" may legitimately show real values and
+  the History screen already holds real sessions, so specs assert the set they
+  just created, never emptiness or list length. If the user already completed
+  today's sets, the spec uses the app's own "Agregar serie" to get a working row
+  (new `set_number`, deleted afterwards by id).
+- **`e2e/fixtures/test-plan.sql` is now LEGACY** and carries a ⛔ header: applying
+  it while a real plan is active would create a **second** `status='active'` plan
+  and the app could show the test plan instead of the user's real routine.

@@ -1,72 +1,69 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import {
+  MISSING_CREDENTIALS,
+  SKIP_NO_CREDENTIALS,
+  exerciseCards,
+  login,
+  skipNoExerciseMessage,
+  waitForToday,
+} from "./helpers";
 
 /**
  * 04_exercise_detail — detalle de ejercicio contra el proyecto Supabase real
- * (R1, R8). Requiere E2E_EMAIL / E2E_PASSWORD en .env.local y el fixture
- * e2e/fixtures/test-plan.sql aplicado ('Plan de prueba E2E' con 3 ejercicios
- * hoy). Si la BD muestra "Sin plan activo" (fixture retirado), el spec se
- * salta con un mensaje claro en lugar de fallar.
+ * (R1–R6, R8). Requiere E2E_EMAIL / E2E_PASSWORD en .env.local y un día de
+ * entrenamiento con al menos un ejercicio; si no lo hay, el spec se salta con
+ * un mensaje claro en lugar de fallar.
  *
- * La media del fixture son URLs placeholder (placehold.co): puede no renderizar
- * un GIF real — solo se afirma que la caja de media está presente (degradación
- * sin crash), no que el GIF cargue.
+ * ⚠️ Agnóstico del plan: la BD ya trae el catálogo real y el plan real del
+ * usuario, así que el nombre y la meta esperados se leen de la propia card de
+ * HOY en vez de hardcodearse. Solo lectura: este spec no escribe ni borra NADA.
  */
-const email = process.env.E2E_EMAIL ?? "";
-const password = process.env.E2E_PASSWORD ?? "";
-
-const FIXTURE_DAY_TITLE = "Pecho y espalda (prueba)";
-const FIRST_EXERCISE_NAME = "Ejercicio E2E 1 — press de banca";
-
-async function login(page: Page): Promise<void> {
-  await page.goto("/login");
-  await page.getByLabel("Correo").fill(email);
-  await page.getByLabel("Contraseña").fill(password);
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("heading", { name: "Hoy" })).toBeVisible();
-}
+const EXERCISE_INDEX = 0;
 
 test.describe("04_exercise_detail — pantalla de ejercicio", () => {
-  test.skip(
-    email === "" || password === "",
-    "E2E_EMAIL / E2E_PASSWORD no definidos en .env.local — se omite el detalle de ejercicio",
-  );
+  test.skip(MISSING_CREDENTIALS, SKIP_NO_CREDENTIALS);
 
   test("desde Hoy, la primera card abre el detalle y volver regresa a Hoy", async ({ page }) => {
     await test.step("login y llegada a la pantalla Hoy", async () => {
       await login(page);
     });
 
-    const sinPlan = page.getByText("Sin plan activo");
-    const fixtureTitle = page.getByRole("heading", { name: FIXTURE_DAY_TITLE });
+    const exerciseCount = await waitForToday(page);
+    test.skip(exerciseCount <= EXERCISE_INDEX, skipNoExerciseMessage(EXERCISE_INDEX));
 
-    await test.step("esperar a que resuelva la carga de Hoy", async () => {
-      await expect(sinPlan.or(fixtureTitle).first()).toBeVisible({ timeout: 15_000 });
-    });
+    const card = exerciseCards(page).nth(EXERCISE_INDEX);
+    const cardText = (await card.textContent())?.trim() ?? "";
+    // La card es "<nombre><series> × <reps>": el nombre es su primer span.
+    const exerciseName = (await card.locator("span > span").first().textContent())?.trim() ?? "";
+    const meta = (await card.locator("span > span").nth(1).textContent())?.trim() ?? "";
+    expect(exerciseName).not.toBe("");
+    expect(meta).toMatch(/\d+ × \S+/);
 
-    test.skip(
-      await sinPlan.isVisible(),
-      "Sin plan activo en la BD — aplica e2e/fixtures/test-plan.sql en el SQL editor de Supabase y re-corre",
-    );
-
-    await test.step("R1: tocar la primera card abre el detalle con el nombre como título", async () => {
-      await page.getByRole("link", { name: /Ejercicio E2E 1/ }).click();
+    await test.step("R1: tocar la card abre el detalle con el nombre del ejercicio como título", async () => {
+      await card.click();
       await expect(page).toHaveURL(/\/ejercicio\//);
-      await expect(
-        page.getByRole("heading", { name: FIRST_EXERCISE_NAME, level: 1 }),
-      ).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByRole("heading", { name: exerciseName, level: 1 })).toBeVisible({
+        timeout: 20_000,
+      });
+      expect(cardText).toContain(exerciseName);
     });
 
     await test.step("R2/R3: caja de media presente y pasos numerados en orden", async () => {
       await expect(page.getByTestId("exercise-media")).toBeVisible();
+
       const steps = page.locator("ol > li");
-      await expect(steps).toHaveCount(2);
-      await expect(steps.nth(0)).toHaveText("Paso 1 de prueba");
-      await expect(steps.nth(1)).toHaveText("Paso 2 de prueba");
+      const sinPasos = page.getByText("Sin instrucciones disponibles");
+      if ((await steps.count()) > 0) {
+        await expect(steps.first()).toHaveText(/\S/);
+        await expect(steps.last()).toHaveText(/\S/);
+      } else {
+        // Caso borde documentado del catálogo: aviso en vez de lista vacía.
+        await expect(sinPasos).toBeVisible();
+      }
     });
 
     await test.step("R4/R6: metas del plan y atribución Gym Visual visibles", async () => {
-      await expect(page.getByText("4 × 8-12")).toBeVisible();
-      await expect(page.getByText(/Descanso: 90 s/)).toBeVisible();
+      await expect(page.getByText(meta, { exact: false }).first()).toBeVisible();
       await expect(
         page.getByRole("link", { name: "© Gym visual — https://gymvisual.com/" }),
       ).toBeVisible();
@@ -75,9 +72,7 @@ test.describe("04_exercise_detail — pantalla de ejercicio", () => {
     await test.step("R8: el control de volver regresa a Hoy", async () => {
       await page.getByRole("link", { name: "Volver" }).click();
       await expect(page.getByRole("heading", { name: "Hoy" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: FIXTURE_DAY_TITLE })).toBeVisible({
-        timeout: 15_000,
-      });
+      await expect(exerciseCards(page).first()).toBeVisible({ timeout: 20_000 });
     });
   });
 });

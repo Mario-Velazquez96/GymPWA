@@ -1,163 +1,120 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import {
+  MISSING_CREDENTIALS,
+  SKIP_NO_CREDENTIALS,
+  createdLogs,
+  deleteCreatedLogs,
+  ensureEditableRows,
+  increaseWeight,
+  login,
+  openExerciseCard,
+  rowOfSet,
+  saveButton,
+  savedButton,
+  setNumberOf,
+  skipNoExerciseMessage,
+  snapshotLogs,
+  todayLocalISO,
+  waitForToday,
+  weightValue,
+  type LogSnapshot,
+} from "./helpers";
 
 /**
  * 05_workout_logging — registro de series contra el proyecto Supabase real
- * (R5, R8). Requiere E2E_EMAIL / E2E_PASSWORD en .env.local y el fixture
- * e2e/fixtures/test-plan.sql aplicado ('Plan de prueba E2E', ejercicio '0001'
- * con 4 series objetivo hoy). Si la BD muestra "Sin plan activo", el spec se
- * salta con un mensaje claro en lugar de fallar.
+ * (R5, R8). Requiere E2E_EMAIL / E2E_PASSWORD en .env.local y un día de
+ * entrenamiento con al menos un ejercicio en el plan activo; si no lo hay, el
+ * spec se salta con un mensaje claro en lugar de fallar.
  *
- * ESCRIBE filas reales en `workout_logs` (esperado y aprobado — ver
- * progress/current.md). Limpieza: borra las filas de HOY del ejercicio de
- * fixture '0001' del usuario E2E vía la API REST de Supabase con la sesión
- * autenticada del navegador (RLS acota el delete a las filas propias). Se
- * limpia al INICIO (corridas anteriores fallidas) y al FINAL (las filas que
- * este spec creó). La app NO tiene delete en services/ — el borrado vive solo
- * aquí, a propósito (R9).
+ * ⚠️ La BD ya contiene datos REALES del usuario (plan activo real, historial
+ * real). Este spec por tanto:
+ *  - **no hardcodea ningún exercise_id**: usa el 1er ejercicio de HOY y deriva
+ *    su id del DOM (05 usa el 1º, 06 el 2º y 08 el 3º → sin colisiones al
+ *    correr en paralelo);
+ *  - **escribe solo en `workout_logs`** y borra en `afterEach`
+ *    EXCLUSIVAMENTE las filas cuyo `id` no existía antes de empezar
+ *    (`deleteCreatedLogs`), nunca por filtro de ejercicio/fecha;
+ *  - **no asume historial vacío**: "Anterior" puede traer valores reales y hoy
+ *    puede tener series ya registradas por el usuario, así que trabaja sobre
+ *    las primeras filas EDITABLES y afirma sobre lo que él mismo guardó.
  */
-const email = process.env.E2E_EMAIL ?? "";
-const password = process.env.E2E_PASSWORD ?? "";
-const supabaseUrl = process.env.VITE_SUPABASE_URL ?? "";
-const anonKey = process.env.VITE_SUPABASE_ANON_KEY ?? "";
+const EXERCISE_INDEX = 0;
 
-const FIXTURE_EXERCISE_ID = "0001";
-const FIRST_EXERCISE_LINK = /Ejercicio E2E 1/;
+let snapshot: LogSnapshot | null = null;
 
-/** Fecha local del dispositivo como "YYYY-MM-DD" (mismo criterio que la app). */
-function todayLocalISO(): string {
-  const now = new Date();
-  const pad2 = (value: number): string => String(value).padStart(2, "0");
-  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
-}
-
-async function login(page: Page): Promise<void> {
-  await page.goto("/login");
-  await page.getByLabel("Correo").fill(email);
-  await page.getByLabel("Contraseña").fill(password);
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("heading", { name: "Hoy" })).toBeVisible();
-}
-
-/** Access token de la sesión supabase persistida en localStorage del navegador. */
-async function accessToken(page: Page): Promise<string | null> {
-  return page.evaluate(() => {
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (key !== null && key.startsWith("sb-") && key.endsWith("-auth-token")) {
-        const raw = localStorage.getItem(key);
-        if (raw === null) {
-          return null;
-        }
-        try {
-          return (JSON.parse(raw) as { access_token?: string }).access_token ?? null;
-        } catch {
-          return null;
-        }
-      }
-    }
-    return null;
-  });
-}
-
-/**
- * Borra las filas de workout_logs de HOY para el ejercicio de fixture, con la
- * sesión del usuario E2E (RLS: solo borra filas propias). Nunca imprime
- * credenciales.
- */
-async function cleanupTodayLogs(page: Page): Promise<void> {
-  const token = await accessToken(page);
-  if (token === null) {
-    throw new Error("No se encontró la sesión supabase en localStorage para la limpieza");
+test.afterEach(async ({ page }) => {
+  const pending = snapshot;
+  snapshot = null;
+  if (pending !== null) {
+    // Corre aunque el test haya fallado a mitad: no deja basura en la BD real.
+    await deleteCreatedLogs(page, pending);
   }
-  const url = `${supabaseUrl}/rest/v1/workout_logs?exercise_id=eq.${FIXTURE_EXERCISE_ID}&performed_at=eq.${todayLocalISO()}`;
-  const response = await fetch(url, {
-    method: "DELETE",
-    headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) {
-    throw new Error(`Limpieza de workout_logs falló con status ${response.status}`);
-  }
-}
+});
 
 test.describe("05_workout_logging — registro de series", () => {
-  test.skip(
-    email === "" || password === "" || supabaseUrl === "" || anonKey === "",
-    "E2E_EMAIL / E2E_PASSWORD / VITE_SUPABASE_* no definidos en .env.local — se omite el registro de series",
-  );
+  test.skip(MISSING_CREDENTIALS, SKIP_NO_CREDENTIALS);
 
   test("guarda dos series, recarga y persisten como guardadas (R5, R8)", async ({ page }) => {
     await test.step("login y llegada a la pantalla Hoy", async () => {
       await login(page);
     });
 
-    const sinPlan = page.getByText("Sin plan activo");
-    const fixtureTitle = page.getByRole("heading", { name: "Pecho y espalda (prueba)" });
+    const exerciseCount = await waitForToday(page);
+    test.skip(exerciseCount <= EXERCISE_INDEX, skipNoExerciseMessage(EXERCISE_INDEX));
 
-    await test.step("esperar a que resuelva la carga de Hoy", async () => {
-      await expect(sinPlan.or(fixtureTitle).first()).toBeVisible({ timeout: 15_000 });
-    });
+    const opened =
+      await test.step("abrir el ejercicio de hoy y esperar la sección de registro", () =>
+        openExerciseCard(page, EXERCISE_INDEX));
 
-    test.skip(
-      await sinPlan.isVisible(),
-      "Sin plan activo en la BD — aplica e2e/fixtures/test-plan.sql en el SQL editor de Supabase y re-corre",
-    );
-
-    await test.step("limpieza inicial: fuera las filas de hoy de corridas anteriores", async () => {
-      await cleanupTodayLogs(page);
-    });
-
-    await test.step("abrir el primer ejercicio y esperar la sección de registro", async () => {
-      await page.getByRole("link", { name: FIRST_EXERCISE_LINK }).click();
-      await expect(page.getByRole("heading", { name: "Registro de series" })).toBeVisible({
-        timeout: 15_000,
+    const taken =
+      await test.step("foto de las series preexistentes (base de la limpieza ID-precisa)", async () => {
+        const snap = await snapshotLogs(page, opened.exerciseId, todayLocalISO());
+        snapshot = snap; // el afterEach borra solo lo que se cree a partir de aquí
+        return snap;
       });
-      // target_sets = 4 del fixture → 4 filas editables tras la limpieza (R1)
-      await expect(page.getByRole("button", { name: "Guardar serie" })).toHaveCount(4, {
-        timeout: 15_000,
-      });
-    });
 
-    const row1 = page.locator("li").filter({ has: page.getByRole("heading", { name: "Serie 1" }) });
-    const row2 = page.locator("li").filter({ has: page.getByRole("heading", { name: "Serie 2" }) });
+    // Se trabaja sobre las dos primeras filas EDITABLES: las series que el
+    // usuario ya guardó hoy quedan intactas más arriba. Si ya completó todas
+    // sus series objetivo, "Agregar serie" crea las filas extra que este spec
+    // necesita (y el afterEach las borra por id).
+    const editable = await ensureEditableRows(page, 2);
+
+    const firstSet = await setNumberOf(editable.nth(0));
+    const secondSet = await setNumberOf(editable.nth(1));
+    const row1 = rowOfSet(page, firstSet);
+    const row2 = rowOfSet(page, secondSet);
     let weightAtSave = "";
 
-    await test.step("R5: ajustar el peso de la serie 1 con el stepper y guardar", async () => {
-      await row1.getByRole("button", { name: "Aumentar Peso serie 1" }).click();
-      await row1.getByRole("button", { name: "Aumentar Peso serie 1" }).click();
-      weightAtSave =
-        (await row1.getByRole("button", { name: "Peso serie 1", exact: true }).textContent()) ?? "";
-      await row1.getByRole("button", { name: "Guardar serie" }).click();
-      await expect(row1.getByRole("button", { name: "✓ Guardada" })).toBeVisible({
-        timeout: 15_000,
-      });
+    await test.step("R5: ajustar el peso de la primera fila editable con el stepper y guardar", async () => {
+      await increaseWeight(row1).click();
+      await increaseWeight(row1).click();
+      weightAtSave = (await weightValue(row1).textContent())?.trim() ?? "";
+      await saveButton(row1).click();
+      await expect(savedButton(row1)).toBeVisible({ timeout: 20_000 });
     });
 
-    await test.step("R5: guardar la serie 2", async () => {
-      await row2.getByRole("button", { name: "Guardar serie" }).click();
-      await expect(row2.getByRole("button", { name: "✓ Guardada" })).toBeVisible({
-        timeout: 15_000,
-      });
+    await test.step("R5: guardar la segunda fila editable", async () => {
+      await saveButton(row2).click();
+      await expect(savedButton(row2)).toBeVisible({ timeout: 20_000 });
+    });
+
+    await test.step("R5: se insertó exactamente una fila por serie guardada", async () => {
+      const created = await createdLogs(page, taken);
+      expect(created).toHaveLength(2);
+      expect(created.map((row) => row.set_number).sort((a, b) => a - b)).toEqual(
+        [firstSet, secondSet].sort((a, b) => a - b),
+      );
     });
 
     await test.step("R8: recargar — las dos series persisten como guardadas", async () => {
       await page.reload();
       await expect(page.getByRole("heading", { name: "Registro de series" })).toBeVisible({
-        timeout: 15_000,
+        timeout: 20_000,
       });
-      await expect(row1.getByRole("button", { name: "✓ Guardada" })).toBeVisible({
-        timeout: 15_000,
-      });
-      await expect(row2.getByRole("button", { name: "✓ Guardada" })).toBeVisible();
+      await expect(savedButton(row1)).toBeVisible({ timeout: 20_000 });
+      await expect(savedButton(row2)).toBeVisible();
       // Los valores guardados sobreviven la recarga (no filas vacías)
-      await expect(row1.getByRole("button", { name: "Peso serie 1", exact: true })).toHaveText(
-        weightAtSave,
-      );
-      // Las series 3 y 4 siguen editables
-      await expect(page.getByRole("button", { name: "Guardar serie" })).toHaveCount(2);
-    });
-
-    await test.step("limpieza final: borrar las filas creadas por este spec", async () => {
-      await cleanupTodayLogs(page);
+      await expect(weightValue(row1)).toHaveText(weightAtSave);
     });
   });
 });

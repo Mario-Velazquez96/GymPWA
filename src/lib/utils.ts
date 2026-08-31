@@ -1,6 +1,8 @@
 /**
- * Helpers de fechas y formato para las pantallas Hoy e Historial (R2, R6;
- * 06_history R1, R2, R7). Todas las funciones de fecha operan con strings ISO
+ * Helpers de fechas y agrupación para las pantallas Hoy e Historial (R2, R6;
+ * 06_history R1, R2). El formato de peso vive en `lib/units.ts`
+ * (`formatWeight`), que es consciente de la unidad activa (08_weight_units).
+ * Todas las funciones de fecha operan con strings ISO
  * "YYYY-MM-DD" y componentes LOCALES del dispositivo — nunca `toISOString()`/
  * UTC, porque cerca de medianoche la fecha UTC puede ser otra.
  */
@@ -46,15 +48,6 @@ export function formatDateEs(iso: string, options?: { year?: boolean }): string 
 
   const base = `${part("weekday")} ${part("day")} ${part("month")}`;
   return withYear ? `${base} ${part("year")}` : base;
-}
-
-/**
- * Peso con unidad para lectura (06_history R2, R7): entero → "22 kg",
- * fraccionario → "22.5 kg". Se redondea a 2 decimales y se dejan caer los
- * ceros de cola vía la conversión numérica a string.
- */
-export function formatKg(value: number): string {
-  return `${Math.round(value * 100) / 100} kg`;
 }
 
 /** Una sesión del historial: la fecha ISO y sus series (06_history R1). */

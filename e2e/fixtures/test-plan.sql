@@ -1,3 +1,22 @@
+-- ============================================================================
+-- ⛔ DATOS LEGACY — NO APLICAR MIENTRAS EXISTA UN PLAN REAL ACTIVO ⛔
+--
+-- Desde 2026-08 este proyecto de Supabase contiene DATOS REALES: el repo `Gym`
+-- sembró el catálogo completo (1324 ejercicios) y el usuario tiene un plan
+-- activo real ("Recomposición en casa — Septiembre 2026") con historial real en
+-- `workout_logs`.
+--
+-- Aplicar este archivo AHORA insertaría un SEGUNDO plan con status='active';
+-- `getActivePlan` toma uno solo, así que la app podría mostrar el plan de
+-- prueba en lugar de la rutina real del usuario. NO lo apliques salvo que
+-- antes hayas archivado/borrado el plan real a conciencia.
+--
+-- Ya NO hace falta para los E2E: desde 08_weight_units los specs son
+-- agnósticos del plan (derivan el ejercicio del DOM de la pantalla Hoy) y
+-- limpian sus filas por `id` exacto. Este archivo se conserva solo como
+-- referencia histórica / para un proyecto Supabase vacío.
+-- ============================================================================
+
 -- e2e/fixtures/test-plan.sql — Fixture manual para verificar 03_today_view.
 --
 -- CÓMO USAR: pega este archivo completo en el SQL editor de Supabase (corre

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactElement } from "react";
 import { Link, useParams } from "react-router-dom";
 import SessionCard from "@/components/SessionCard";
+import { useExerciseUnit } from "@/hooks/useExerciseUnit";
 import type { Exercise, WorkoutLog } from "@/lib/types";
 import { groupByDate } from "@/lib/utils";
 import { getExercise } from "@/services/exercises";
@@ -21,9 +22,14 @@ interface LoadedResult {
  * "Reintentar" (R6), vacío "Aún no hay registros de este ejercicio" (R4) y
  * "Ejercicio no encontrado" con vuelta a Hoy para ids inexistentes (R8). RLS
  * acota las filas al usuario autenticado; ningún `supabase.from` aquí (R7).
+ *
+ * Las series se leen en la unidad que el ejercicio tenga guardada en el
+ * dispositivo (08 R12): esta pantalla NO lleva toggle propio — la unidad se
+ * cambia en la pantalla del ejercicio y aquí solo se respeta.
  */
 export default function HistoryScreen() {
   const { exerciseId } = useParams<"exerciseId">();
+  const [unit] = useExerciseUnit(exerciseId ?? "");
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<LoadedResult | null>(null);
 
@@ -113,7 +119,7 @@ export default function HistoryScreen() {
     return (
       <section className="flex flex-col gap-3">
         {sessions.map((session) => (
-          <SessionCard key={session.date} date={session.date} sets={session.sets} />
+          <SessionCard key={session.date} date={session.date} sets={session.sets} unit={unit} />
         ))}
       </section>
     );

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { PlanExercise, WorkoutLog } from "@/lib/types";
 import { todayLocalISO } from "@/lib/utils";
+import { UNIT_STORAGE_PREFIX } from "@/lib/units";
 
 /** Services mockeados en su frontera (R9); hook y componentes reales. */
 vi.mock("@/services/logs", () => ({
@@ -81,6 +82,7 @@ function rowOf(setNumber: number): HTMLElement {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear(); // 08: la preferencia de unidad vive en el dispositivo
   mockGetPrevious.mockResolvedValue({ data: [], error: null });
   mockGetSession.mockResolvedValue({ data: [], error: null });
   stubLogSetOk();
@@ -131,8 +133,9 @@ describe("LoggingSection — carga y filas (R1, R2, R3)", () => {
     renderSection();
 
     await screen.findByRole("heading", { name: "Serie 1" });
-    expect(within(rowOf(1)).getByText("Anterior: 22.5 × 10")).toBeInTheDocument();
-    expect(within(rowOf(2)).getByText("Anterior: 25 × 8")).toBeInTheDocument();
+    // 08 R6: la columna "Anterior" lleva la unidad activa (kg por defecto).
+    expect(within(rowOf(1)).getByText("Anterior: 22.5 kg × 10")).toBeInTheDocument();
+    expect(within(rowOf(2)).getByText("Anterior: 25 kg × 8")).toBeInTheDocument();
     expect(within(rowOf(3)).getByText("Anterior: —")).toBeInTheDocument();
     expect(within(rowOf(4)).getByText("Anterior: —")).toBeInTheDocument();
   });
@@ -326,5 +329,221 @@ describe("LoggingSection — error de carga con Reintentar", () => {
     renderSection();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudieron cargar las series");
+  });
+});
+
+describe("LoggingSection — unidad de peso (08 R1, R4, R6, R7, R11, R14, R15)", () => {
+  /** Botón del toggle de unidad ("kg" | "lb"). */
+  function unitButton(unit: "kg" | "lb"): HTMLElement {
+    return within(screen.getByRole("group", { name: "Unidad de peso" })).getByRole("button", {
+      name: unit,
+    });
+  }
+
+  it("R1: renderiza el toggle 'Unidad de peso' junto al encabezado, en kg por defecto", async () => {
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    expect(screen.getByRole("heading", { name: "Registro de series" })).toBeInTheDocument();
+    expect(unitButton("kg")).toHaveAttribute("aria-pressed", "true");
+    expect(unitButton("lb")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("R15: sin preferencia guardada todo se ve en kg, exactamente como en 05", async () => {
+    mockGetPrevious.mockResolvedValue({ data: previousSession, error: null });
+
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    expect(within(rowOf(1)).getByRole("button", { name: "Peso serie 1" })).toHaveTextContent(
+      "22.5 kg",
+    );
+    expect(within(rowOf(1)).getByText("Anterior: 22.5 kg × 10")).toBeInTheDocument();
+  });
+
+  it("R2/R6: con 'lb' guardado para el ejercicio, la fila arranca en libras", async () => {
+    localStorage.setItem(`${UNIT_STORAGE_PREFIX}0001`, "lb");
+    mockGetPrevious.mockResolvedValue({ data: previousSession, error: null });
+
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    expect(unitButton("lb")).toHaveAttribute("aria-pressed", "true");
+    expect(within(rowOf(1)).getByRole("button", { name: "Peso serie 1" })).toHaveTextContent(
+      "49.6 lb",
+    );
+    expect(within(rowOf(1)).getByText("Anterior: 49.6 lb × 10")).toBeInTheDocument();
+  });
+
+  it("R4: en lb el stepper de peso sube de 5 en 5 libras", async () => {
+    localStorage.setItem(`${UNIT_STORAGE_PREFIX}0001`, "lb");
+    mockGetPrevious.mockResolvedValue({ data: previousSession, error: null });
+
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    const row1 = rowOf(1);
+    await userEvent.click(within(row1).getByRole("button", { name: "Aumentar Peso serie 1" }));
+
+    // 49.6 lb + 5 = 54.6 lb (el kg subyacente pasa a 24.76)
+    expect(within(row1).getByRole("button", { name: "Peso serie 1" })).toHaveTextContent("54.6 lb");
+  });
+
+  it("R7/R9/R14: guardar 45 lb inserta weight_kg 20.41 y la fila queda '45 lb'", async () => {
+    localStorage.setItem(`${UNIT_STORAGE_PREFIX}0001`, "lb");
+
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    const row1 = rowOf(1);
+    await userEvent.click(within(row1).getByRole("button", { name: "Peso serie 1" }));
+    const input = within(row1).getByRole("textbox", { name: "Peso serie 1" });
+    await userEvent.clear(input);
+    await userEvent.type(input, "45{Enter}");
+    await userEvent.click(within(row1).getByRole("button", { name: "Guardar serie" }));
+
+    expect(await within(row1).findByRole("button", { name: "✓ Guardada" })).toBeDisabled();
+    expect(mockLogSet).toHaveBeenCalledTimes(1);
+    expect(mockLogSet).toHaveBeenCalledWith({
+      exercise_id: "0001",
+      plan_exercise_id: "pe-1",
+      performed_at: todayLocalISO(),
+      set_number: 1,
+      reps: 8,
+      weight_kg: 20.41, // capturado en lb, almacenado en kg (contrato con Gym)
+    });
+    expect(within(row1).getByRole("button", { name: "Peso serie 1" })).toHaveTextContent("45 lb");
+  });
+
+  it("R9: en lb NO se aplica la regla de 0.5 kg — 45 lb guarda sin error de validación", async () => {
+    localStorage.setItem(`${UNIT_STORAGE_PREFIX}0001`, "lb");
+
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    const row1 = rowOf(1);
+    await userEvent.click(within(row1).getByRole("button", { name: "Peso serie 1" }));
+    const input = within(row1).getByRole("textbox", { name: "Peso serie 1" });
+    await userEvent.clear(input);
+    await userEvent.type(input, "45{Enter}");
+    await userEvent.click(within(row1).getByRole("button", { name: "Guardar serie" }));
+
+    await within(row1).findByRole("button", { name: "✓ Guardada" });
+    expect(within(row1).queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("R2: cambiar a lb persiste la preferencia del ejercicio en el dispositivo", async () => {
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    await userEvent.click(unitButton("lb"));
+
+    expect(localStorage.getItem(`${UNIT_STORAGE_PREFIX}0001`)).toBe("lb");
+    expect(unitButton("lb")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("R11: togglear con una fila editada re-renderiza el valor sin tocar el kg subyacente", async () => {
+    mockGetPrevious.mockResolvedValue({ data: previousSession, error: null });
+
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    const row1 = rowOf(1);
+    // 22.5 kg + 2.5 = 25 kg editados por el usuario
+    await userEvent.click(within(row1).getByRole("button", { name: "Aumentar Peso serie 1" }));
+    expect(within(row1).getByRole("button", { name: "Peso serie 1" })).toHaveTextContent("25 kg");
+
+    await userEvent.click(unitButton("lb"));
+
+    // Mismo peso físico, otra lectura: 25 kg = 55.1 lb. La fila NO se reinicia
+    // ni se re-prellena (seguiría en 22.5 kg si se hubiera reseteado).
+    expect(within(row1).getByRole("button", { name: "Peso serie 1" })).toHaveTextContent("55.1 lb");
+    expect(within(row1).getByRole("button", { name: "Repeticiones serie 1" })).toHaveTextContent(
+      "10",
+    );
+    expect(within(row1).getByRole("button", { name: "Guardar serie" })).toBeEnabled();
+
+    // Y al guardar sale el kg exacto que el usuario había editado (R14).
+    await userEvent.click(within(row1).getByRole("button", { name: "Guardar serie" }));
+    await within(row1).findByRole("button", { name: "✓ Guardada" });
+    expect(mockLogSet).toHaveBeenCalledWith(expect.objectContaining({ weight_kg: 25 }));
+  });
+
+  it("R11: togglear no borra el mensaje de error ni el estado de una fila fallida", async () => {
+    mockLogSet.mockResolvedValueOnce({
+      data: null,
+      error: "No se pudo guardar la serie, reintenta",
+    });
+
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    const row1 = rowOf(1);
+    await userEvent.click(within(row1).getByRole("button", { name: "Guardar serie" }));
+    expect(await within(row1).findByRole("alert")).toHaveTextContent(
+      "No se pudo guardar la serie, reintenta",
+    );
+
+    await userEvent.click(unitButton("lb"));
+
+    expect(within(row1).getByRole("alert")).toHaveTextContent(
+      "No se pudo guardar la serie, reintenta",
+    );
+  });
+
+  it("R11: las series ya guardadas hoy se releen en la nueva unidad, sin reguardar", async () => {
+    mockGetSession.mockResolvedValue({
+      data: [makeLog({ performed_at: todayLocalISO(), set_number: 1, weight_kg: 20.41, reps: 10 })],
+      error: null,
+    });
+
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    const row1 = rowOf(1);
+    expect(within(row1).getByRole("button", { name: "Peso serie 1" })).toHaveTextContent(
+      "20.41 kg",
+    );
+
+    await userEvent.click(unitButton("lb"));
+
+    expect(within(row1).getByRole("button", { name: "Peso serie 1" })).toHaveTextContent("45 lb");
+    expect(within(row1).getByRole("button", { name: "✓ Guardada" })).toBeDisabled();
+    expect(mockLogSet).not.toHaveBeenCalled();
+  });
+
+  it("R7: en kg un peso fuera de pasos de 0.5 sigue bloqueando el guardado (R15)", async () => {
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    const row1 = rowOf(1);
+    await userEvent.click(within(row1).getByRole("button", { name: "Peso serie 1" }));
+    const input = within(row1).getByRole("textbox", { name: "Peso serie 1" });
+    await userEvent.clear(input);
+    await userEvent.type(input, "22.3{Enter}");
+    await userEvent.click(within(row1).getByRole("button", { name: "Guardar serie" }));
+
+    expect(await within(row1).findByRole("alert")).toHaveTextContent(
+      "El peso debe ir en pasos de 0.5 kg",
+    );
+    expect(mockLogSet).not.toHaveBeenCalled();
+  });
+});
+
+describe("LoggingSection — reps independientes de la unidad (08 R4)", () => {
+  it("en lb las repeticiones siguen avanzando de 1 en 1", async () => {
+    localStorage.setItem(`${UNIT_STORAGE_PREFIX}0001`, "lb");
+
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    const row1 = rowOf(1);
+    await userEvent.click(
+      within(row1).getByRole("button", { name: "Aumentar Repeticiones serie 1" }),
+    );
+
+    expect(within(row1).getByRole("button", { name: "Repeticiones serie 1" })).toHaveTextContent(
+      "9",
+    );
   });
 });
