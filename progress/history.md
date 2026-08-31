@@ -291,3 +291,15 @@ exercise of the day and deleted rows he logged himself. It was replaced by
 - **`e2e/fixtures/test-plan.sql` is now LEGACY** and carries a ⛔ header: applying
   it while a real plan is active would create a **second** `status='active'` plan
   and the app could show the test plan instead of the user's real routine.
+
+## 2026-08-31 — Cierre del pendiente cross-repo de 01_supabase_schema_and_rls
+
+Con el catalogo ya sembrado por el repo `Gym` (1324 ejercicios), se re-ejecuto
+`node scripts/check-rls.mjs` contra el proyecto en vivo: **todos los checks
+PASARON**, incluido el (c) `insert con el user_id propio` que estaba en SKIP por
+la FK contra un `exercises` vacio. Verificacion de seguridad de datos:
+`workout_logs` = 154 filas antes y 154 despues (la limpieza del script borra por
+`id=eq.<id>` exacto de la fila que inserta). Queda cerrada la ultima asercion
+abierta de `01_supabase_schema_and_rls`; no quedan pendientes automatizables en
+el repo — solo las verificaciones manuales en el iPhone (PWA de 07 y humo de
+kg/lb de 08).

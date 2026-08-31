@@ -35,13 +35,13 @@ with live-data-intact evidence (154 `workout_logs` before and after). See
   Supabase project (it carries a warning header).
 
 ## Notes / blockers
-- **(open) RLS own-insert check:** re-run `node scripts/check-rls.mjs` now that
-  the catalog is seeded, to close `01_supabase_schema_and_rls`'s last SKIPped
-  assertion (the own-`user_id` insert into `workout_logs`, previously blocked by
-  the FK against an empty `exercises` table). **Before running it against live
-  data, make its cleanup ID-precise like the E2E helpers** — it must delete only
-  the row it just inserted (by `id`), never by an `exercise_id`/`performed_at`
-  filter, or it can wipe real sets of the user.
+- **(closed 2026-08-31) RLS own-insert check:** `node scripts/check-rls.mjs`
+  re-run against the live project now that the catalog is seeded — **all checks
+  PASS**, including check (c) (own-`user_id` insert accepted, then deleted) that
+  was SKIPped when `exercises` was empty. This closes the last open assertion of
+  `01_supabase_schema_and_rls`. Its cleanup was already ID-precise
+  (`?id=eq.<id>` of the row it inserted); `workout_logs` count was 154 before
+  and 154 after the run.
 - **(human, not auto-verifiable) iPhone checks:** the 07 PWA install checklist
   (`progress/impl_07_pwa_install_and_cache.md`) and the 08 unit smoke test —
   open a dumbbell exercise in lb and another in kg one after the other and
