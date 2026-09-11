@@ -273,3 +273,14 @@ describe("ExerciseScreen — carga, error y navegación (R8, R9, R10)", () => {
     expect(back).toHaveClass("min-w-11");
   });
 });
+
+describe("ExerciseScreen — espacio para la barra inferior (10 R3)", () => {
+  it("el <main> reserva pb-24 para que la navegación no tape el contenido", async () => {
+    mockGetDetail.mockResolvedValue({ data: makeDetail(), error: null });
+
+    renderScreen();
+
+    await screen.findByRole("heading", { name: "Press de banca", level: 1 });
+    expect(screen.getByRole("main")).toHaveClass("pb-24");
+  });
+});

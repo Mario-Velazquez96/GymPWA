@@ -273,3 +273,14 @@ describe("TodayScreen — navegación de días (R6, R10)", () => {
     }
   });
 });
+
+describe("TodayScreen — espacio para la barra inferior (10 R3)", () => {
+  it("el <main> reserva pb-24 para que la navegación no tape el contenido", async () => {
+    mockGetActivePlan.mockResolvedValue({ data: null, error: null });
+
+    renderScreen();
+
+    expect(await screen.findByText("Sin plan activo")).toBeInTheDocument();
+    expect(screen.getByRole("main")).toHaveClass("pb-24");
+  });
+});

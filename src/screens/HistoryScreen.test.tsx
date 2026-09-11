@@ -242,3 +242,12 @@ describe("HistoryScreen — unidad por ejercicio (08 R12, R15)", () => {
     expect(screen.queryByRole("group", { name: "Unidad de peso" })).not.toBeInTheDocument();
   });
 });
+
+describe("HistoryScreen — espacio para la barra inferior (10 R3)", () => {
+  it("el <main> reserva pb-24 para que la navegación no tape el contenido", async () => {
+    renderScreen();
+
+    await screen.findByRole("heading", { name: "Press de banca", level: 1 });
+    expect(screen.getByRole("main")).toHaveClass("pb-24");
+  });
+});

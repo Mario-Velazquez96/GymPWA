@@ -49,6 +49,15 @@ describe("App — guards de sesión (R1)", () => {
     expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
   });
 
+  it("sin sesión, /dieta rebota a /login (10 R1)", async () => {
+    await renderApp("/dieta", configured);
+    expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Dieta" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("navigation", { name: "Navegación principal" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("/login muestra el formulario con inputs etiquetados (R7)", async () => {
     await renderApp("/login", configured);
     expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
