@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
-import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import {
+  AuthError,
+  AuthRetryableFetchError,
+  type Session,
+  type SupabaseClient,
+} from "@supabase/supabase-js";
 
 type AuthChangeCallback = (event: string, session: Session | null) => void;
 
@@ -63,6 +68,7 @@ describe("SessionProvider (R4, R6)", () => {
       expect(result.current.loading).toBe(false);
     });
     expect(result.current.session).toBe(fakeSession);
+    expect(result.current.offlineSession).toBe(false);
   });
 
   it("sin sesión persistida termina la carga con session null", async () => {
@@ -140,5 +146,133 @@ describe("SessionProvider — render de children", () => {
     await waitFor(() => {
       expect(mocks.getSession).toHaveBeenCalled();
     });
+  });
+});
+
+describe("SessionProvider — sesión sin red (12 R18, R20)", () => {
+  /** Lo que auth-js devuelve en modo avión con el access token ya caducado. */
+  function retryableFailure() {
+    return {
+      data: { session: null },
+      error: new AuthRetryableFetchError("Failed to fetch", 0),
+    };
+  }
+
+  it("un refresco fallido por red no es logout: offlineSession true y sin spinner (R18)", async () => {
+    mocks.getSession.mockResolvedValue(retryableFailure());
+
+    const { result } = renderHook(() => useSession(), { wrapper: SessionProvider });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.offlineSession).toBe(true);
+    expect(result.current.session).toBeNull();
+  });
+
+  it("el INITIAL_SESSION nulo que emite auth-js sin red no pisa offlineSession (R18)", async () => {
+    mocks.getSession.mockResolvedValue(retryableFailure());
+
+    const { result } = renderHook(() => useSession(), { wrapper: SessionProvider });
+    await waitFor(() => {
+      expect(result.current.offlineSession).toBe(true);
+    });
+
+    emitAuthChange("INITIAL_SESSION", null);
+
+    expect(result.current.offlineSession).toBe(true);
+    expect(result.current.session).toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("al volver la red, TOKEN_REFRESHED fija la sesión y limpia la bandera (R20)", async () => {
+    mocks.getSession.mockResolvedValue(retryableFailure());
+
+    const { result } = renderHook(() => useSession(), { wrapper: SessionProvider });
+    await waitFor(() => {
+      expect(result.current.offlineSession).toBe(true);
+    });
+
+    emitAuthChange("TOKEN_REFRESHED", fakeSession);
+
+    expect(result.current.session).toBe(fakeSession);
+    expect(result.current.offlineSession).toBe(false);
+  });
+
+  it("un SIGNED_OUT real (refresh token inválido o logout) sí cierra la sesión (R20)", async () => {
+    mocks.getSession.mockResolvedValue(retryableFailure());
+
+    const { result } = renderHook(() => useSession(), { wrapper: SessionProvider });
+    await waitFor(() => {
+      expect(result.current.offlineSession).toBe(true);
+    });
+
+    emitAuthChange("SIGNED_OUT", null);
+
+    expect(result.current.session).toBeNull();
+    expect(result.current.offlineSession).toBe(false);
+  });
+
+  it("un error NO retryable no activa el modo offline (sesión realmente ausente) (R18)", async () => {
+    mocks.getSession.mockResolvedValue({
+      data: { session: null },
+      error: new AuthError("Invalid Refresh Token", 400),
+    });
+
+    const { result } = renderHook(() => useSession(), { wrapper: SessionProvider });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.offlineSession).toBe(false);
+    expect(result.current.session).toBeNull();
+  });
+
+  it("un error retryable acompañado de sesión vigente NO activa el modo offline", async () => {
+    mocks.getSession.mockResolvedValue({
+      data: { session: fakeSession },
+      error: new AuthRetryableFetchError("Failed to fetch", 0),
+    });
+
+    const { result } = renderHook(() => useSession(), { wrapper: SessionProvider });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.session).toBe(fakeSession);
+    expect(result.current.offlineSession).toBe(false);
+  });
+
+  it("si el provider se desmonta antes de que getSession resuelva, no actualiza estado", async () => {
+    let resolveSession: (value: unknown) => void = () => undefined;
+    mocks.getSession.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSession = resolve;
+      }),
+    );
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const { unmount } = renderHook(() => useSession(), { wrapper: SessionProvider });
+    unmount();
+
+    await act(async () => {
+      resolveSession({ data: { session: fakeSession }, error: null });
+      await Promise.resolve();
+    });
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it("si getSession rechaza, no deja el spinner colgado (comportamiento de 02 intacto)", async () => {
+    mocks.getSession.mockRejectedValue(new TypeError("boom"));
+
+    const { result } = renderHook(() => useSession(), { wrapper: SessionProvider });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.session).toBeNull();
+    expect(result.current.offlineSession).toBe(false);
   });
 });

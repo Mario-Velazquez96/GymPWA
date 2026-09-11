@@ -1,21 +1,47 @@
 # Current session
 
 ## Feature in progress
-(none — all 9 SDD features 00–08 are `done` in `feature_list.json`)
+**Ninguna.** El lote de Dieta está cerrado: `09_diet_schema_and_rls`,
+`10_diet_screen`, `11_diet_checklists` y `12_diet_offline` están **`done`** en
+`feature_list.json` (12 cerrada el 2026-09-11 con reviewer **APPROVE**,
+0 bloqueantes, en `progress/review_12_diet_offline.md`; `./init.sh` verde en 5
+corridas completas entre implementer, reviewer y menores; 48 archivos / 732
+tests; resumen en `progress/history.md`).
+
+La única feature abierta es **`13_fix_lb_prefill_validation` (`pending`)** y
+**espera una decisión del humano** (ver el bloque del bug más abajo).
 
 ## State
-2026-08-31: `08_weight_units` closed. Per-exercise **kg/lb** preference stored on
-the device (`localStorage`, key `gym:unit:<exercise_id>`, **kg by default and on
-any corrupt/blocked value**): `UnitToggle` next to "Registro de series",
-steppers of ±5 lb / ±2.5 kg, unit-aware validation ("Anterior", saved rows and
-the History screen render through `formatWeight`; History has no toggle of its
-own, it just reads the preference). Conversion uses the exact factor
-`0.45359237` with round-trip-stable rounding (2 decimals to kg, 1 to lb).
-**Storage stays canonical kg** — no migration, no RLS change, no new column — so
-the `Gym`-repo contract is untouched. `./init.sh` green (404 tests, 98% lines)
-and `./init.sh e2e` green **12/12** against the live project; reviewer APPROVE
-with live-data-intact evidence (154 `workout_logs` before and after). See
-`progress/history.md` and `progress/impl_08_weight_units.md`.
+2026-09-11: `12_diet_offline` entregada. La sección Dieta funciona sin señal:
+tras abrirla una vez con red, el plan completo se guarda como snapshot en
+`localStorage` (`gym:diet:snapshot`, `{ v: 1, plan, savedAt }`) y `useDietPlan`
+lo sirve en modo stale-while-revalidate, con el banner `role="status"`
+"Sin conexión · plan guardado el …" bajo el `<h1>` y reintento al evento
+`online`. **No se cachea la API de Supabase en el service worker**
+(`vite.config.ts` sin cambios; `e2e/pwa.spec.ts` R5 sigue verde) y el chunk de
+`/dieta` ya viajaba en el precache de Workbox (verificado en `dist/sw.js` y en
+runtime). Cero migraciones, cero dependencias, cero env vars, cero escrituras a
+Supabase.
+
+Dos cambios tocaron **02_auth** (aprobados por el humano y auditados por el
+reviewer, que los declara seguros):
+1. `useSession` expone `offlineSession` (solo con `AuthRetryableFetchError` +
+   sesión persistida, es decir fallo de infraestructura: sin red o 5xx; nunca
+   con credenciales inválidas) e ignora `INITIAL_SESSION`; `ProtectedRoute`
+   redirige solo `if (session === null && !offlineSession)`. Con esto, en modo
+   avión y con el token caducado la app ya **no expulsa a `/login`**;
+   `SIGNED_OUT` y los errores 4xx sí siguen expulsando.
+2. `services/auth.ts#signOut` borra el snapshot de dieta y, si el cierre remoto
+   no puede completarse (sin red + token caducado, donde auth-js sale antes de
+   borrar la sesión), **purga la clave `sb-*-auth-token` y repite el cierre**
+   para que "Cerrar sesión" cierre de verdad en el dispositivo. Era el menor de
+   privacidad que señaló el review de 12.
+
+Historia del lote: el 2026-09-10 llegó
+`project-documents/client_requirement_dieta.md`; el leader lo rebanó por capa
+(schema/RLS → pantalla de lectura → listas tachables → offline) y se
+implementaron 09 → 10 → 11 → 12, una a la vez, con su spec aprobado y su
+review.
 
 ## Project reality (READ THIS BEFORE TOUCHING E2E OR THE DB)
 - The `Gym` repo **has seeded** the catalog: 1324 real `exercises` with real
@@ -33,16 +59,102 @@ with live-data-intact evidence (154 `workout_logs` before and after). See
   it would create a **second** `status='active'` plan and the app could show the
   test plan instead of the real routine. It is legacy, kept only for an empty
   Supabase project (it carries a warning header).
+- No hay tablas `diet_*` en el proyecto Supabase todavía: se crean al
+  implementar 09 (aplicar 003/004 por el mismo mecanismo que 001/002).
+
+## ⚠ Bug de producción detectado 2026-09-11 (decisión del humano pendiente)
+
+Al correr los E2E de `10_diet_screen` fallaron `e2e/logging.spec.ts` y
+`e2e/history.spec.ts`. La investigación (subagente Explore, evidencia con
+`archivo:línea`) concluye que **no es fragilidad del test: afecta al usuario**.
+
+**Qué pasa.** Una serie capturada en **lb** se guarda en `workout_logs.weight_kg`
+como un kg que **no es múltiplo de 0.5** (15 lb = 6.8 kg, 20 lb = 9.07 kg). Si
+ese ejercicio se abre después con la preferencia en **kg** —el valor por defecto
+en un dispositivo o navegador nuevo, o si Mario toca "kg"— `buildInitialRows`
+precarga ese peso y `validateSet` lo rechaza con *"El peso debe ir en pasos de
+0.5 kg"*: **"Guardar serie" no inserta nada**. El stepper de ±2.5 kg conserva el
+resto para siempre (6.8 → 9.3 → 11.8…), así que la única salida es teclear el
+peso a mano o devolver el toggle a lb. Por el encadenado del prefill, arrastra a
+todas las filas siguientes.
+
+**Cadena:** `src/hooks/useWorkoutLog.ts:141` → `src/lib/logging.ts:59` →
+`src/lib/units.ts:97` (`WEIGHT_GRAIN` kg 0.5 / lb 0.1). La unidad sale solo de
+`localStorage` (`src/lib/units.ts:125-133`, ausente/corrupto → kg); la BD no
+guarda en qué unidad se capturó.
+
+**Opciones (la elección es tuya: toca el contrato R7 de 05):**
+
+| | Arreglo | Coste | Riesgo |
+|---|---|---|---|
+| A | `validateSet` tolera el peso si es exactamente el precargado de un registro previo | Medio | Abre un hueco documentado en R7 de 05 |
+| B | Cuantizar el prefill a la rejilla de la unidad activa | Bajo | Cambia en silencio el peso mostrado (6.8 → 7 kg) |
+| C | Cuantizar al guardar en vez de rechazar | Bajo | Guarda algo distinto de lo que se ve |
+| D | Relajar la rejilla de kg (solo ≥ 0 y 2 decimales) | Mínimo | Contradice R7 de 05 y sus tests: cambio de spec |
+| E | Persistir la unidad de captura por serie (columna nueva) | Alto | Migración sobre 154 filas reales; toca el contrato con `Gym` |
+| F | Tocar solo el E2E | Mínimo | Deja la suite verde y **enmascara** el bloqueo real |
+
+Registrado como `13_fix_lb_prefill_validation` (`pending`) en
+`feature_list.json`. **No se ha tocado nada de 05 ni de 08.**
+
+## ⏳ Esperan DECISIÓN o ACCIÓN del humano (lista corta, de un vistazo)
+
+1. ~~**Aplicar las migraciones de 09 en el proyecto en vivo**~~ ✅ **HECHO
+   2026-09-11.** El humano aplicó `003_diet_schema.sql` y `004_diet_rls.sql`.
+   `node scripts/check-rls.mjs` → **exit 0, todos los checks PASARON** (las 10
+   tablas; (d) y (e) confirman que la app **no** puede escribir en `diet_*`,
+   que es el criterio 9 del requerimiento). Contrato de columnas verificado por
+   probe REST: 14/9/7/8/6 columnas, idénticas a §6. `e2e/diet.spec.ts` 2/2.
+   Queda solo la comprobación visual opcional de `pg_policies` (13) y
+   `pg_indexes` en el SQL Editor. Detalle en
+   `specs/09_diet_schema_and_rls/tasks.md` §"Cierre operacional".
+
+2. **Falta el plan de dieta: lo sube el repo `Gym`.** Las tablas ya existen y
+   están vacías, así que `/dieta` muestra hoy su **estado vacío** ("Aún no
+   tienes un plan de dieta asignado"), que es lo correcto. Para verlo con datos
+   hay que construir `scripts/upload-diet.mjs` en el repo `Gym` (contra el DDL
+   de `003_diet_schema.sql`, archivando el plan anterior antes de insertar) y
+   subir un plan. Con el plan cargado, volver a correr los E2E que aún se
+   saltan:
+   - `npx playwright test e2e/diet-offline.spec.ts` → su **test 2 (criterio 7
+     completo: modo avión, banner, tachado sin red, vuelta de la señal)**
+     **nunca se ha ejecutado de verdad**.
+   - `npx playwright test e2e/diet-checklists.spec.ts` → sus **dos** tests,
+     idem.
+   - El camino "plan activo" de `e2e/diet.spec.ts`.
+3. **Checklist manual en el iPhone** (no automatizable):
+   - 07: instalación de la PWA (`progress/impl_07_pwa_install_and_cache.md`).
+   - 08: smoke de unidades kg/lb.
+   - 10 y 11: lectura de la dieta y tachado con el pulgar en la cocina y en el
+     súper (entradas de 10 y 11 en `progress/history.md`).
+   - 12: abrir Dieta con red → modo avión → cerrar y reabrir la app instalada →
+     plan completo con banner → tachar en el súper → salir del modo avión → el
+     banner desaparece. **Repetir con la app cerrada más de 1 h** (token
+     caducado) para ejercitar el camino de sesión sin red: debe quedarse en
+     Dieta, no rebotar a `/login` (tolerando hasta ~30 s de "Cargando…"
+     mientras auth-js se rinde: es comportamiento de supabase-js, no de la app).
+     Medir de paso `localStorage["gym:diet:snapshot"].length`.
+4. **Decidir la opción de `13_fix_lb_prefill_validation`** (tabla A–F del bloque
+   del bug, arriba). Toca el contrato R7 de 05, por eso la elección es tuya.
+   Mientras tanto, `e2e/logging.spec.ts` y `e2e/history.spec.ts` seguirán en
+   rojo.
+5. **`e2e/today.spec.ts` roza el timeout de 30 s** (pasa en ~34.7 s con
+   `--timeout=180000`): recorre el plan real día a día y el margen se estrecha
+   conforme avanza el mes. Decidir si se sube el timeout del test o se acota el
+   recorrido. Ajeno a cualquier feature del lote de Dieta.
+6. **Menor abierto del review de 12 (impacto práctico nulo):** `signOut` borra
+   `gym:diet:snapshot` pero **no** las claves de tachado `gym:diet:check:*` del
+   usuario anterior. Limpiarlas pertenece a 11 (su módulo `lib/checklist.ts`),
+   fuera de la superficie que autorizaba el spec de 12. ¿Se abre una feature
+   pequeña de higiene o se deja así?
 
 ## Notes / blockers
-- **(closed 2026-08-31) RLS own-insert check:** `node scripts/check-rls.mjs`
-  re-run against the live project now that the catalog is seeded — **all checks
-  PASS**, including check (c) (own-`user_id` insert accepted, then deleted) that
-  was SKIPped when `exercises` was empty. This closes the last open assertion of
-  `01_supabase_schema_and_rls`. Its cleanup was already ID-precise
-  (`?id=eq.<id>` of the row it inserted); `workout_logs` count was 154 before
-  and 154 after the run.
-- **(human, not auto-verifiable) iPhone checks:** the 07 PWA install checklist
-  (`progress/impl_07_pwa_install_and_cache.md`) and the 08 unit smoke test —
-  open a dumbbell exercise in lb and another in kg one after the other and
-  confirm each keeps its own unit, with the toggle reachable by thumb.
+- **Sin bloqueos técnicos.** No hay ninguna feature `in_progress`: la siguiente
+  sesión empieza por la decisión del punto 4 (bug de kg/lb) o por lo que el
+  humano priorice.
+- Specs 09–12 aprobados el 2026-09-10 y ya implementados y revisados; sus
+  `specs/<feature>/tasks.md` quedan con todas las casillas marcadas y con las
+  notas del resultado real (incluidos los E2E que se saltan).
+- Recordatorio permanente: este repo solo escribe en `workout_logs`; planes y
+  catálogo (y ahora las tablas `diet_*`) son de solo lectura y pertenecen al
+  repo `Gym`. La service key nunca vive aquí.

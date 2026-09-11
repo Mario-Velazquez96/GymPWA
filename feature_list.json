@@ -80,6 +80,54 @@
         "05_workout_logging",
         "06_history"
       ]
+    },
+    {
+      "name": "09_diet_schema_and_rls",
+      "description": "Migración SQL versionada (supabase/migrations/003_diet_schema.sql + 004_diet_rls.sql) con las 5 tablas del plan de dieta de client_requirement_dieta.md §6: diet_plans, diet_meals, diet_checklist_items (kind meal_prep|super), diet_supplements, diet_sections (kind reglas|rotacion|libre), con un solo plan active por usuario y RLS de SOLO LECTURA (select donde user_id = auth.uid(), hijas vía join a diet_plans; sin policies de insert/update/delete: escritura solo con service key desde el repo Gym). Tipos de fila en src/lib/types.ts, extensión de scripts/check-rls.mjs (anon lee 0 filas; un insert del cliente falla por RLS) y anexo §3.7 al solution_design.md. Es un nuevo contrato entre repos (RF-D1, criterio 9).",
+      "sdd": true,
+      "status": "done",
+      "depends_on": [
+        "01_supabase_schema_and_rls"
+      ]
+    },
+    {
+      "name": "10_diet_screen",
+      "description": "Pantalla Dieta (/dieta) de solo lectura + entrada en la navegación principal (RF-D1): service src/services/diet.ts que carga el diet_plan active con sus hijas en una sola consulta anidada; resumen de macros del día (kcal, proteína, carbohidrato, grasa) visible sin scroll (RF-D2); ventana de alimentación con estado dentro/fuera calculado con la hora local America/Mexico_City, minutos para la próxima comida o cuál sigue (RF-D3, criterio 2); comidas en orden con título, hora, kcal, proteína, items y notas (RF-D4); suplementos con dosis, momento, nota y marca recomendado/no recomendado (RF-D7); secciones colapsables con Markdown básico renderizado (negritas, listas, tablas) (RF-D8, RF-D9); estado vacío sin plan y sin errores en consola (criterio 8). Sin escrituras. Las listas tachables (meal prep y súper) llegan en 11.",
+      "sdd": true,
+      "status": "done",
+      "depends_on": [
+        "09_diet_schema_and_rls",
+        "03_today_view"
+      ]
+    },
+    {
+      "name": "11_diet_checklists",
+      "description": "Listas tachables dentro de la pantalla Dieta: meal prep (RF-D5) y lista de súper agrupada por categoría (RF-D6) a partir de diet_checklist_items. Cada renglón se tacha con un toque (≥44px), el estado vive en localStorage por dispositivo (clave por plan+kind+item, robusta a storage bloqueado/corrupto como en 08), botón Desmarcar todo por lista, y la sección rotacion del plan se muestra debajo del meal prep. Sin escrituras a Supabase (criterios 4 y 5).",
+      "sdd": true,
+      "status": "done",
+      "depends_on": [
+        "10_diet_screen"
+      ]
+    },
+    {
+      "name": "12_diet_offline",
+      "description": "Disponibilidad offline de la sección Dieta (RF-D10, criterio 7): snapshot del último plan de dieta cargado guardado en el dispositivo por el service/hook (stale-while-revalidate a nivel app, NO cacheo de la API de Supabase en el service worker, respetando docs/architecture.md), de modo que en modo avión, tras haber abierto Dieta una vez, se vea el plan completo y las listas se sigan tachando; indicador discreto de datos guardados sin conexión; comportamiento definido cuando la sesión no puede refrescarse sin red. Verificación E2E con contexto offline de Playwright.",
+      "sdd": true,
+      "status": "done",
+      "depends_on": [
+        "11_diet_checklists",
+        "07_pwa_install_and_cache"
+      ]
+    },
+    {
+      "name": "13_fix_lb_prefill_validation",
+      "description": "BUG DE PRODUCCION (detectado 2026-09-11 al correr los E2E de 10): una serie guardada en lb queda en workout_logs como kg no multiplo de 0.5 (15 lb = 6.8 kg). Si el ejercicio se abre con la preferencia en kg (el valor por defecto en dispositivo o navegador nuevo, y lo que hace siempre Playwright), buildInitialRows precarga ese peso, validateSet lo rechaza con El peso debe ir en pasos de 0.5 kg y el boton Guardar serie no inserta nada; el stepper de +/-2.5 kg conserva el resto para siempre, asi que la unica salida es teclear el peso a mano o volver el toggle a lb. Afecta a las filas siguientes por el encadenado del prefill. Cadena: hooks/useWorkoutLog.ts:141 -> lib/logging.ts:59 -> lib/units.ts:97. Hace fallar e2e/logging.spec.ts y e2e/history.spec.ts. Opciones analizadas (A tolerar el valor precargado, B cuantizar el prefill, C cuantizar al guardar, D relajar la rejilla de kg, E persistir la unidad por serie, F tocar solo el E2E) en progress/current.md; la eleccion es del humano porque toca el contrato R7 de 05.",
+      "sdd": true,
+      "status": "pending",
+      "depends_on": [
+        "05_workout_logging",
+        "08_weight_units"
+      ]
     }
   ]
 }

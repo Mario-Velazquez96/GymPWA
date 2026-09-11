@@ -303,3 +303,309 @@ la FK contra un `exercises` vacio. Verificacion de seguridad de datos:
 abierta de `01_supabase_schema_and_rls`; no quedan pendientes automatizables en
 el repo — solo las verificaciones manuales en el iPhone (PWA de 07 y humo de
 kg/lb de 08).
+
+## 2026-09-10 — 09_diet_schema_and_rls: implemented, reviewed, DONE (migraciones pendientes de aplicar)
+
+Primera de las cuatro features de **Dieta** (09 → 10 → 11 → 12), rebanadas del
+nuevo `project-documents/client_requirement_dieta.md`. Solo capa de datos:
+`supabase/migrations/003_diet_schema.sql` con las 5 tablas de §6 copiadas
+**verbatim** (`diet_plans`, `diet_meals`, `diet_checklist_items` con `kind`
+meal_prep|super, `diet_supplements`, `diet_sections` con `kind`
+reglas|rotacion|libre; `unique (diet_plan_id, …)` y `on delete cascade` tal
+cual) más el índice único parcial `diet_plans_one_active_per_user on diet_plans
+(user_id) where status = 'active'`; `004_diet_rls.sql` con RLS en las 5 tablas y
+exactamente 5 policies `select to authenticated` (padre por `user_id =
+auth.uid()`, hijas vía `exists` a `diet_plans`) y **cero policies de
+escritura**: la PWA solo lee, el repo `Gym` escribe con la service key. Tipos
+`DietPlan`/`DietMeal`/`DietChecklistItem`/`DietSupplement`/`DietSection`
+añadidos al final de `src/lib/types.ts` (adición pura) con
+`src/lib/types.test.ts` (13 tests: conteo de columnas 14/9/7/8/6, `expectTypeOf`
+por columna, 3 `@ts-expect-error` que `tsc` valida). `scripts/check-rls.mjs`
+extendido: check (a) itera 10 tablas, `missingTableMsg` apunta a 003/004 para
+`diet_*`, y nuevos checks (d) insert propio en `diet_plans` → 42501, (e) insert
+en `diet_meals` → 42501 y no 23503, (f) select autenticado ×5 → 200 + array;
+ningún probe de dieta puede crear una fila. Docs: anexo `### 3.7 Tablas de
+dieta` en `solution_design.md` (**tercer contrato entre repos**: `upload-diet.mjs`
+del repo `Gym` debe construirse contra ese DDL y **archivar el plan anterior
+antes de insertar**) y `supabase/README.md` (orden 003 → 004, checks d/e/f,
+`pg_policies` = 13, query `pg_indexes`). **Sin deps, sin env vars, sin cambios en
+`src/` fuera de `types.ts` + test; la app sigue escribiendo solo
+`workout_logs`.** Open items resueltos por el humano con la opción recomendada
+(índice parcial sí; sin índices extra en hijas; sin checks semánticos). Gates:
+`./init.sh` verde (418 tests / 29 archivos, 98 % líneas). Reviewer: **APPROVE**
+(`progress/review_09_diet_schema_and_rls.md`, 0 bloqueantes; reprodujo el
+`diff` §6 vs 003 = IDENTICAL y la salida del script). Detalles:
+`progress/impl_09_diet_schema_and_rls.md`.
+
+**⏳ PENDIENTE EXPLÍCITO (humano): migraciones 003/004 NO aplicadas en vivo.**
+Este repo no tiene service key ni Supabase CLI enlazada. Aplicar desde el SQL
+Editor `003_diet_schema.sql` y luego `004_diet_rls.sql` (mismo mecanismo que
+001/002) y re-correr `node scripts/check-rls.mjs` → debe salir con exit 0 y
+PASS en (a) ×10, (b), (c), (d), (e), (f); luego `pg_policies` = 13,
+`pg_indexes like 'diet_%'` con el índice parcial, contrato de columnas ×10
+tablas, y marcar `[x]` las tareas 6.1–6.4 de `specs/09_diet_schema_and_rls/tasks.md`.
+Hasta entonces el script termina con exit 1 reportando "la tabla no existe
+(… pega 003_diet_schema.sql y luego 004_diet_rls.sql …)" para las 5 tablas
+`diet_*` — comportamiento diseñado, no fallo de RLS; los checks de 01 siguen en
+PASS. Avisar además al repo `Gym` del nuevo contrato §3.7.
+
+Hallazgos menores del reviewer (no bloqueantes, opcionales):
+1. `scripts/check-rls.mjs` check (e) reutiliza `FOREIGN_USER_ID` como
+   `diet_plan_id` aleatorio; funciona pero el nombre confunde — un alias
+   `RANDOM_PLAN_ID` o un comentario lo aclararía.
+2. El check (f) solo prueba 200 + array con un único usuario E2E; la parte
+   "solo filas propias" de R11 queda cubierta por el check (a) (anon → 0 filas)
+   y por la policy inspeccionada. No leerlo como test de aislamiento entre
+   usuarios.
+3. `scripts/check-rls.mjs` sigue con comillas simples (no conforme a Prettier
+   desde 01); se dejó a propósito para no reescribir líneas ajenas. Si se
+   formatea, hacerlo en un commit aparte.
+4. `progress/current.md` tenía dos fragmentos sueltos tras la edición del
+   leader (la línea de nombres bajo "Feature in progress" y "(status →
+   `in_progress`, …) o pedir cambios a `spec_author`." en "Notes / blockers");
+   el primero se limpió al cerrar 09, el segundo se conserva tal cual por
+   instrucción del leader de no tocar esa sección.
+
+## 2026-09-11 — 10_diet_screen: implemented, reviewed (REJECT → fix → APPROVE), DONE
+
+Segunda rebanada de **Dieta** y primera **navegación principal** de la app.
+Pantalla `/dieta` de **solo lectura** montada sobre las tablas de 09: `<h1>Dieta</h1>`
+→ `MacroSummary` (`<dl>` de 4 columnas: Calorías/Proteína/Carbohidrato/Grasa con
+"kcal"/"g", visible sin scroll en 390×844) → `EatingWindow` (ventana
+`HH:MM–HH:MM` y su estado ahora mismo: "faltan 60 min para Desayuno fuerte
+(10:00)" / "Dentro de la ventana · siguiente: …" / "Ventana cerrada · próxima
+comida mañana a las 10:00 (…)" / "Este plan no tiene ventana de ayuno") →
+"Comidas" (`MealCard` por comida en orden de `position`, partes nulas omitidas
+sin separadores huérfanos) → "Suplementos" (`SupplementList` en grupos
+"Recomendados" / "No vale la pena" con marca + `aria-label`) → "Más del plan"
+(`CollapsibleSection` = `<details>` cerrado por defecto con `Markdown`).
+`services/diet.ts#getActiveDietPlan()` hace **una** consulta anidada
+(`select("*, diet_meals(*), diet_checklist_items(*), diet_supplements(*),
+diet_sections(*)").eq("status","active").limit(1)`), ordena las cuatro hijas por
+`position` en el cliente y devuelve `DIET_ERROR_LOAD` ("No se pudo cargar la
+dieta") ante error/excepción/cliente nulo; **cero escrituras** (la app sigue
+escribiendo solo `workout_logs`). Lógica pura en `src/lib/diet.ts`
+(`nowLocalHM` con `Intl` + zona fija `America/Mexico_City` y `hourCycle "h23"`,
+`parseHM`, `formatHora`, `formatMinutes`, `sortByPosition`, `getWindowState`
+como función pura que recibe los minutos). Hooks `useDietPlan` (loading / vacío
+/ error + `retry`) y `useNowMinutes` (recalcula cada 60 s **sin** reconsultar
+Supabase). Navegación: `BottomNav` fija abajo con dos pestañas Hoy | Dieta
+(≥ 44px, `aria-current="page"`, `pb-[env(safe-area-inset-bottom)]`), montada una
+sola vez en `ProtectedRoute`; `viewport-fit=cover` en `index.html`; **único**
+cambio en Today/Exercise/History: la clase `pb-24` del `<main>`. `/dieta` va
+detrás de `ProtectedRoute` con `React.lazy` + `Suspense`, así que
+`react-markdown@10.1.0` + `remark-gfm@4.0.1` (las **únicas** deps nuevas,
+fijadas exactas, sin `rehype-raw` ni `dangerouslySetInnerHTML`) viajan en su
+propio chunk: `DietScreen-*.js` 164.04 kB (49.36 kB gz), sin engordar el camino
+del gym. Open items resueltos por el humano con la opción recomendada:
+(A) barra inferior de dos pestañas, Historial no es pestaña; (B) react-markdown
++ remark-gfm; (C) zona horaria fija; (D) `rotacion` visible como colapsable
+hasta que 11 la reubique. Sin env vars, sin migraciones, sin tocar el service
+worker. Gates: `./init.sh` verde (42 archivos / 571 tests, 98.46 % stmts /
+98.41 % líneas; módulos de la feature al 100 % salvo `EatingWindow.tsx` 93.33 %)
+y `e2e/diet.spec.ts` 2/2. Detalles: `progress/impl_10_diet_screen.md`.
+
+**Ronda de review.** El reviewer primero **RECHAZÓ** (`progress/review_10_diet_screen.md`):
+`src/App.dieta.test.tsx` era **flaky** y tumbaba `./init.sh` antes del `build`
+en ~50 % de las corridas. Causa raíz: `React.lazy` transformaba
+`react-markdown` + `remark-gfm` (~164 kB) **dentro** del render, y bajo la
+contención de la suite completa eso superaba el plazo por defecto de 1000 ms de
+`findBy*`, que vencía con el fallback de `<Suspense>` montado. Arreglo de raíz
+(sin reintentos ni `test.retry`): precargar el chunk con `await
+import("@/screens/DietScreen")` en un `beforeAll`, de modo que el `lazy` resuelva
+desde la caché de módulos. Verificado con **5 corridas completas de `./init.sh`
+seguidas** (más 3 suites en paralelo con caché fría, para reproducir la
+contención). También se cerraron los menores: caso nuevo que afirma que el tick
+de 60 s **no** vuelve a llamar a `getActiveDietPlan` (la mitad "sin reconsultar"
+de R10) y limpieza del reformateo ajeno en `TodayScreen.test.tsx` (su diff queda
+en `+11`: solo el test añadido). Veredicto final: **APPROVE**, 0 bloqueantes.
+
+**⏳ PENDIENTE (humano), bloqueado por 09:** mientras `003_diet_schema.sql` /
+`004_diet_rls.sql` no estén aplicadas en vivo, `/dieta` resuelve —
+correctamente — en su **estado de error con "Reintentar"**, y eso es lo que
+ejercitó el E2E (anotación `estado observado en /dieta: error`). Queda por
+verificar cuando existan las tablas y el repo `Gym` suba el plan:
+1. **camino "plan activo" de `e2e/diet.spec.ts`** (macros en viewport, ventana,
+   comidas, suplementos, secciones que abren sin `**` ni `|` crudos) — el spec
+   ya está escrito y se bifurca solo; basta re-correrlo;
+2. **checklist manual en el iPhone**: los cuatro macros sin scroll en 390×844,
+   "faltan 60 min para Desayuno fuerte" a las 09:00 y "Ventana cerrada …" a las
+   19:00, secciones con negritas/listas/tablas, y la barra inferior alcanzable
+   con el pulgar y **sobre** el indicador de inicio en modo standalone.
+Ajeno a 10 pero detectado al correr sus E2E: el bug de producción del prefill en
+lb (`13_fix_lb_prefill_validation`, `pending`), documentado en
+`progress/current.md`; no se tocó nada de 05 ni de 08.
+
+## 2026-09-11 — 11_diet_checklists: implemented, reviewed (APPROVE), DONE
+
+Tercera rebanada de **Dieta**: las dos listas **tachables** que Mario usa con las
+manos ocupadas. Dentro de `/dieta`, entre "Suplementos" y "Más del plan",
+aparecen ahora dos `CollapsibleSection` cerradas por defecto: **"Qué cocinar"**
+(los `diet_checklist_items` de `kind='meal_prep'` en orden de `position`, y
+**debajo** la sección `rotacion` del plan como bloque directo `<h3>` +
+`Markdown`, que deja de listarse entre las colapsables genéricas del final) y
+**"Lista de súper"** (los `kind='super'` **agrupados por `categoria`** en orden
+de primera aparición, con un grupo final "Otros" para los que no la traen y sin
+`<h3>` cuando ese es el único grupo). Cada renglón es **un solo**
+`<button type="button" role="checkbox" aria-checked>` a ancho completo y
+`min-h-11` — el toque acierta en cualquier punto de la fila, Enter/Space
+funcionan nativos y el nombre accesible es "<item> · <cantidad>" (o solo
+"<item>" si la cantidad es nula/blanca); marcado se ve con `line-through` +
+texto atenuado. Cada lista lleva contador **"<n> de <m> marcados"**
+(`aria-live="polite"`) y botón **"Desmarcar todo"** con `disabled` nativo
+mientras ningún renglón **visible** esté marcado (un id viejo del
+almacenamiento no lo habilita).
+
+**El tachado es estado del dispositivo, no del plan** (client_requirement_dieta
+§6): vive en `localStorage` bajo `gym:diet:check:<planId>:<kind>` como array
+JSON de ids, con el mismo rigor que `lib/units.ts` de 08 — `try/catch` en el
+propio getter de `globalThis.localStorage` (Safari privado con datos
+bloqueados lanza ahí), en `getItem`/`JSON.parse` y en `setItem` (cuota); valor
+ausente, JSON inválido o no-array → `Set` vacío, entradas no-string
+descartadas, escritura best-effort que **nunca** propaga (con el storage
+bloqueado se sigue tachando en memoria durante la sesión). Capas nuevas:
+`src/lib/checklist.ts` (puro: `checklistStorageKey`, `readChecked`,
+`writeChecked`, `selectChecklist`, `checklistLabel`, `groupByCategoria`,
+`OTROS_LABEL`), `src/hooks/useChecklist.ts` (`{ checked, toggle, clearAll }`,
+lectura perezosa, re-lectura **durante el render** al cambiar de plan, escritura
+en el callback y nunca al montar ni dentro del updater) y los presentacionales
+`Checklist.tsx` / `ChecklistItem.tsx`. **Cero escrituras a Supabase, cero
+consultas nuevas** (`services/diet.ts` de 10 ya traía los
+`diet_checklist_items`, y quedó byte-idéntico), **cero migraciones, cero
+dependencias, cero env vars, cero cambios en el service worker**; la única
+tabla que la app escribe sigue siendo `workout_logs`. Un plan nuevo (mes nuevo)
+arranca con su propia clave y la del anterior no se toca ni se migra.
+Open items resueltos por el humano con la opción recomendada: (A) rotación como
+bloque directo dentro de "Qué cocinar"; (B) apertura de las listas **no**
+persistida (estado nativo del `<details>`); (C) agrupación por igualdad exacta
+tras `trim()` — sugerencia abierta al repo `Gym` de normalizar `categoria` en
+`upload-diet.mjs`; (D) "Más del plan" se omite si no queda ninguna sección tras
+excluir `rotacion`; (E) se mantiene el contador. El único archivo de 10 tocado
+es `DietScreen.tsx` (+ su test).
+
+Gates: **`./init.sh` verde en 4 corridas completas** (3 del implementer + 3 del
+reviewer sobre el mismo código, más una tras aplicar los menores): 46 archivos /
+668 tests, 98.56 % líneas globales y **100 % de líneas en los cinco módulos de
+la feature** (`checklist.ts`, `useChecklist.ts`, `Checklist.tsx`,
+`ChecklistItem.tsx`, `DietScreen.tsx`). Sin tests intermitentes: el flake de 10
+no reapareció. Review: **APPROVE** con 0 bloqueantes y 6 menores
+(`progress/review_11_diet_checklists.md`); se aplicaron los baratos — key de
+grupo prefijada (`cat:<categoría>` vs. `otros`), `sortByPosition` reaplicado a
+las secciones `rotacion` con test de dos rotaciones desordenadas, y la casilla
+7.2 de `tasks.md` matizada con el resultado real de los E2E. Desviación
+declarada del spec: `checklistLabel` vive en `lib/checklist.ts` y no en
+`ChecklistItem.tsx` (exportar una función no-componente desde un archivo de
+componente dispara `react-refresh/only-export-components`); y dos aserciones de
+10 en `DietScreen.test.tsx` se actualizaron —una afirmaba lo contrario de 11 R9,
+la otra solo cambió de selector—, ambas comentadas en el código. Detalles:
+`progress/impl_11_diet_checklists.md`.
+
+**⏳ PENDIENTE (humano), bloqueado por 09 igual que en 10:** mientras
+`003_diet_schema.sql` / `004_diet_rls.sql` no estén aplicadas en el proyecto en
+vivo, `/dieta` resuelve en su estado de error y **los dos tests nuevos de
+`e2e/diet-checklists.spec.ts` se saltan** (verificado con `--reporter=json`:
+`status: "skipped"`, anotaciones `estado observado en /dieta: error` y el
+mensaje "…las tablas `diet_*` de 09 aún no están aplicadas en el proyecto en
+vivo"). **No han llegado a ejecutarse nunca de verdad**: las 18 requirements
+están cubiertas por Vitest, pero los criterios 4 y 5 del brief no se han visto
+en un navegador real. Al aplicar las migraciones y subir un plan desde el repo
+`Gym`, **volver a correr `npx playwright test e2e/diet-checklists.spec.ts`** (y
+el camino "plan activo" de `e2e/diet.spec.ts`, pendiente de 10). Falta también
+el checklist manual en el iPhone: tachar con el pulgar en la cocina y en el
+súper, cerrar y reabrir la app → sigue tachado; "Desmarcar todo" limpia; en modo
+avión se puede tachar; en Safari privado con datos bloqueados la app abre, se
+tacha en sesión y no aparece ningún error. Ajenos a 11 y sin empeorar:
+`e2e/logging.spec.ts` y `e2e/history.spec.ts` siguen rojos por
+`13_fix_lb_prefill_validation`, y `e2e/today.spec.ts` falla por **rozar el
+timeout de 30 s** (recorre el plan real día a día; pasa en 34.7 s con
+`--timeout=180000`) — decisión pendiente del humano, nada que ver con 11.
+
+## 2026-09-11 — 12_diet_offline: implemented, reviewed (APPROVE), DONE (cierra el lote de Dieta)
+
+Cuarta y última feature del lote de Dieta. La sección Dieta queda **consultable
+sin señal**: tras haberla abierto una vez con red, en modo avión se ve el plan
+completo (macros, ventana, comidas, meal prep, súper, suplementos, secciones),
+las listas se siguen tachando y la sesión persistida **ya no rebota a
+`/login`**. Todo con un **snapshot a nivel app** en `localStorage`
+(`gym:diet:snapshot`, `{ v: 1, plan, savedAt }`) y **sin cachear jamás la API de
+Supabase en el service worker** (docs/architecture.md; `vite.config.ts` quedó
+byte-idéntico y `e2e/pwa.spec.ts` R5 "/rest/ nunca se cachea" sigue verde).
+
+Capas: `src/lib/dietCache.ts` (puro: `readDietSnapshot`, `writeDietSnapshot`
+—`null` **borra** la clave—, `formatSavedAt`, validación estructural con
+versión y `try/catch` en todo acceso, al estilo de `lib/units.ts`);
+`src/hooks/useDietPlan.ts` reescrito a **stale-while-revalidate** con la máquina
+de fases `loading | snapshot | fresh | stale | error` (snapshot inmediato sin
+spinner, una consulta por intento, reescritura/borrado del snapshot en OK,
+`isStale` + `savedAt` cuando la red falla, y **reintento único al evento
+`online`** mientras esté stale); `src/components/OfflineBanner.tsx`
+(`<p role="status">` "Sin conexión · plan guardado el 10 sep 09:15", con texto
+de respaldo sin fecha si el ISO no parsea) montado bajo el `<h1>` de
+`DietScreen`. Los `id` del plan viajan intactos en el snapshot, así que el
+tachado de 11 (`gym:diet:check:<planId>:<kind>`) aplica igual sin red. El chunk
+lazy de `/dieta` (`assets/DietScreen-<hash>.js`) ya entraba en el precache de
+Workbox: se **verificó** en `dist/sw.js` y en runtime, no se cambió la config.
+**Cero migraciones, cero dependencias, cero env vars, cero escrituras a
+Supabase**; `src/services/diet.ts` byte-idéntico.
+
+**Cambio en 02_auth (open item A, aprobado por el humano y auditado por el
+reviewer).** Hallazgo: con el access token caducado y sin red, `getSession()`
+devuelve `{ session: null, error: AuthRetryableFetchError }` (auth-js conserva
+la sesión en storage pero no la entrega) y la app **expulsaba a `/login`** en
+pleno modo avión. Arreglo mínimo: `SessionProvider` expone `offlineSession`
+—true solo si `session === null` **y** el error es retryable, es decir, un fallo
+de infraestructura (sin red o 5xx), nunca un 4xx de credenciales— e ignora el
+evento `INITIAL_SESSION` (sin red auth-js lo emite con `null` y pisaría la
+bandera); `ProtectedRoute` redirige solo `if (session === null &&
+!offlineSession)`. `TOKEN_REFRESHED`/`SIGNED_IN` reponen la sesión y limpian la
+bandera; `SIGNED_OUT` y cualquier error no retryable **siguen llevando a
+`/login`**. Se añadió un `.catch()` en `getSession()` (fail-closed: solo apaga
+el spinner) porque al ignorar `INITIAL_SESSION` se perdía el único apagador en
+el camino de promesa rechazada. Dictamen del reviewer: **no abre ningún hueco**
+—sin token válido toda consulta sale con la anon key y RLS la rechaza; lo único
+visible sin red es el snapshot local, que `signOut` borra—.
+
+**Menor del review atendido dentro de 12 (privacidad):** "Cerrar sesión" sin red
+y con token caducado **no cerraba nada**, porque `GoTrueClient._signOut`
+devuelve el `sessionError` antes de `_removeSession()` (ni borra la sesión
+persistida ni emite `SIGNED_OUT`), y con `offlineSession` el guard tampoco
+rebotaba. Arreglo confinado a `services/auth.ts#signOut`: si el cierre no se
+completa, se purga la clave `sb-*-auth-token` del dispositivo (best-effort,
+nunca lanza, solo claves de supabase) y se repite `signOut()`; el segundo
+intento ya no encuentra sesión, **no sale a la red** y termina en
+`_removeSession()`, que emite `SIGNED_OUT` → `/login`. Con red el camino es
+idéntico al de antes (una sola llamada, nada que purgar), con test que lo
+afirma. No aplicado el menor 2 (`signOut` no limpia `gym:diet:check:*`): esas
+claves son de 11 y su limpieza cae fuera de la superficie que el spec de 12
+autoriza; queda como decisión del humano.
+
+Gates: **`./init.sh` verde en 5 corridas completas** (3 del implementer + 3 del
+reviewer sobre el mismo código + 1 tras aplicar los menores): 48 archivos /
+**732 tests**, 98.72 % de líneas globales y **100 % de líneas en los siete
+módulos tocados** (`dietCache.ts`, `useDietPlan.ts`, `OfflineBanner.tsx`,
+`DietScreen.tsx`, `useSession.tsx`, `ProtectedRoute.tsx`, `services/auth.ts`).
+Review: **APPROVE**, 0 bloqueantes, 4 menores
+(`progress/review_12_diet_offline.md`). Detalles y trazabilidad R1–R22:
+`progress/impl_12_diet_offline.md`. Desviaciones declaradas: el banner va sobre
+todo `renderBody()` (no solo sobre `MacroSummary`), el `.catch()` de
+`getSession()`, el reordenado de `signOut` y los timeouts del E2E 3 (auth-js
+reintenta el refresh ~30 s sin red antes de rendirse, así que la app muestra
+"Cargando…" ese rato antes de pintar Dieta con el banner — comportamiento de
+supabase-js, previo a 12).
+
+E2E (`e2e/diet-offline.spec.ts`, contra `pnpm preview`, solo lectura): **test 1
+(precache del chunk de Dieta, sin credenciales) PASA**; **test 3 (token caducado
++ `setOffline(true)` → sigue en `/dieta`, no `/login`) PASA contra el proyecto
+real**; `auth` 2/2, `pwa` 3/3, `smoke` y `diet` verdes.
+
+**⏳ PENDIENTE (humano), bloqueado por 09 como en 10 y 11:** el **test 2
+(criterio 7 completo)** se salta con mensaje explícito porque `/dieta` sigue
+resolviendo en error mientras `003_diet_schema.sql` / `004_diet_rls.sql` no
+estén aplicadas; **nunca se ha ejecutado de verdad**. Al aplicarlas y subir un
+plan desde el repo `Gym`: correr `npx playwright test e2e/diet-offline.spec.ts`,
+`e2e/diet-checklists.spec.ts` y el camino "plan activo" de `e2e/diet.spec.ts`,
+más el checklist manual en el iPhone (modo avión tras abrir Dieta, tachado sin
+red, vuelta de la señal, y reapertura tras **más de 1 h** para ejercitar el
+token caducado). Ajenos a 12 y sin empeorar: `e2e/logging.spec.ts` y
+`e2e/history.spec.ts` siguen rojos por `13_fix_lb_prefill_validation`, y
+`e2e/today.spec.ts` por rozar el timeout de 30 s.
