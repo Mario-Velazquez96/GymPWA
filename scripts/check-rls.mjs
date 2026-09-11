@@ -1,16 +1,22 @@
 #!/usr/bin/env node
 /**
- * check-rls.mjs — verificación operacional de RLS (feature 01_supabase_schema_and_rls).
+ * check-rls.mjs — verificación operacional de RLS
+ * (features 01_supabase_schema_and_rls y 09_diet_schema_and_rls).
  *
  * Uso:  node scripts/check-rls.mjs
  *
  * Lee de .env.local: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, E2E_EMAIL,
  * E2E_PASSWORD. Nunca imprime los valores de esas variables.
  *
- * Checks:
- *   (a) R7 — cliente anon SIN sesión: select en las 5 tablas → 0 filas, sin error.
+ * Checks (01):
+ *   (a) R7 — cliente anon SIN sesión: select en las 10 tablas → 0 filas, sin error
+ *            (también cubre 09 R8 en las 5 tablas diet_*).
  *   (b) R8 — usuario autenticado inserta en workout_logs con user_id AJENO → rechazado.
  *   (c) R6 — insert con el user_id propio → aceptado; la fila se borra al final (cleanup).
+ * Checks (09 — tablas de dieta, SOLO lectura; ningún probe puede crear una fila):
+ *   (d) R9  — insert autenticado en diet_plans con el user_id PROPIO → rechazado (42501).
+ *   (e) R10 — insert autenticado en diet_meals (hija) → rechazado por RLS (42501), no por FK.
+ *   (f) R11 — select autenticado en las 5 tablas diet_* → 200 y array (0..n filas).
  *
  * Sin dependencias: solo Node ≥ 18 (fetch global). Sale con código ≠ 0 si algún
  * check falla. Si las tablas aún no existen, lo distingue de un fallo real de RLS.
@@ -21,7 +27,15 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const TABLES = ['exercises', 'plans', 'plan_days', 'plan_exercises', 'workout_logs'];
+const CORE_TABLES = ['exercises', 'plans', 'plan_days', 'plan_exercises', 'workout_logs'];
+const DIET_TABLES = [
+  'diet_plans',
+  'diet_meals',
+  'diet_checklist_items',
+  'diet_supplements',
+  'diet_sections',
+];
+const TABLES = [...CORE_TABLES, ...DIET_TABLES];
 const FOREIGN_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 // ---------------------------------------------------------------- utilidades
@@ -82,13 +96,32 @@ function isMissingTable(status, body) {
 }
 
 function missingTableMsg(table) {
-  return `${table}: la tabla no existe (aún no se aplican las migraciones — pega 001_schema.sql y luego 002_rls.sql en el SQL Editor)`;
+  const files = DIET_TABLES.includes(table)
+    ? '003_diet_schema.sql y luego 004_diet_rls.sql'
+    : '001_schema.sql y luego 002_rls.sql';
+  return `${table}: la tabla no existe (aún no se aplican las migraciones — pega ${files} en el SQL Editor)`;
+}
+
+/** ¿La respuesta es un rechazo por policy RLS (HTTP 403 / SQLSTATE 42501)? */
+function isRlsDenied(status, body) {
+  return (
+    status === 403 || (typeof body === 'object' && body !== null && body.code === '42501')
+  );
+}
+
+function authHeaders(anonKey, session) {
+  return {
+    apikey: anonKey,
+    Authorization: `Bearer ${session.token}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+  };
 }
 
 // ------------------------------------------------------------------- checks
 
 async function checkAnonSelect(url, anonKey) {
-  console.log('\n[a] R7 — anon sin sesión: select en cada tabla debe devolver 0 filas');
+  console.log('\n[a] R7 (+09 R8) — anon sin sesión: select en cada tabla debe devolver 0 filas');
   const headers = { apikey: anonKey, Authorization: `Bearer ${anonKey}` };
   for (const table of TABLES) {
     const res = await fetch(`${url}/rest/v1/${table}?select=*&limit=1`, { headers });
@@ -152,10 +185,7 @@ async function checkSpoofedInsert(url, anonKey, session) {
     }
   } else if (isMissingTable(res.status, body)) {
     fail(missingTableMsg('workout_logs'));
-  } else if (
-    res.status === 403 ||
-    (typeof body === 'object' && body !== null && body.code === '42501')
-  ) {
+  } else if (isRlsDenied(res.status, body)) {
     pass('insert con user_id ajeno rechazado (violación de policy RLS)');
   } else {
     fail(`respuesta inesperada al insert con user_id ajeno (HTTP ${res.status})`);
@@ -215,6 +245,83 @@ async function checkOwnInsert(url, anonKey, session) {
   else fail(`no se pudo borrar la fila de prueba (HTTP ${delRes.status}) — bórrala a mano`);
 }
 
+// ------------------------------------------------- checks de dieta (spec 09)
+
+/** Mensaje común cuando un insert en una tabla de dieta es ACEPTADO (no hay cleanup posible). */
+function dietInsertAcceptedMsg(table, body) {
+  const row = Array.isArray(body) ? body[0] : null;
+  const id = row?.id ? ` (id ${row.id})` : '';
+  return (
+    `el insert en ${table} fue ACEPTADO — hay una policy de escritura que no debería existir. ` +
+    `Sin policy de delete no hay cleanup posible desde aquí: borra la fila${id} con la service key desde el repo Gym.`
+  );
+}
+
+async function checkDietPlanInsertRejected(url, anonKey, session) {
+  console.log('\n[d] 09 R9 — insert en diet_plans con el user_id PROPIO debe ser rechazado');
+  const res = await fetch(`${url}/rest/v1/diet_plans`, {
+    method: 'POST',
+    headers: authHeaders(anonKey, session),
+    body: JSON.stringify({
+      user_id: session.userId,
+      name: 'rls-probe (no debe existir)',
+      start_date: '2000-01-01',
+      end_date: '2000-01-31',
+      kcal_objetivo: 1,
+      proteina_g: 1,
+      carbohidrato_g: 1,
+      grasa_g: 1,
+    }),
+  });
+  const body = await parseBody(res);
+  if (res.status === 201) {
+    fail(dietInsertAcceptedMsg('diet_plans', body));
+  } else if (isMissingTable(res.status, body)) {
+    fail(missingTableMsg('diet_plans'));
+  } else if (isRlsDenied(res.status, body)) {
+    pass('insert en diet_plans con user_id propio rechazado (violación de policy RLS)');
+  } else {
+    fail(`respuesta inesperada al insert en diet_plans (HTTP ${res.status})`);
+  }
+}
+
+async function checkDietChildInsertRejected(url, anonKey, session) {
+  console.log('\n[e] 09 R10 — insert en diet_meals (hija) debe ser rechazado por RLS, no por FK');
+  const res = await fetch(`${url}/rest/v1/diet_meals`, {
+    method: 'POST',
+    headers: authHeaders(anonKey, session),
+    body: JSON.stringify({ diet_plan_id: FOREIGN_USER_ID, position: 1, title: 'rls-probe' }),
+  });
+  const body = await parseBody(res);
+  if (res.status === 201) {
+    fail(dietInsertAcceptedMsg('diet_meals', body));
+  } else if (isMissingTable(res.status, body)) {
+    fail(missingTableMsg('diet_meals'));
+  } else if (typeof body === 'object' && body !== null && body.code === '23503') {
+    fail('RLS dejó pasar la fila hasta el FK (23503) — falta bloquear el insert en diet_meals');
+  } else if (isRlsDenied(res.status, body)) {
+    pass('insert en diet_meals rechazado por RLS (42501), sin llegar al FK');
+  } else {
+    fail(`respuesta inesperada al insert en diet_meals (HTTP ${res.status})`);
+  }
+}
+
+async function checkDietAuthenticatedSelect(url, anonKey, session) {
+  console.log('\n[f] 09 R11 — select autenticado en las 5 tablas de dieta debe responder 200 y array');
+  const headers = { apikey: anonKey, Authorization: `Bearer ${session.token}` };
+  for (const table of DIET_TABLES) {
+    const res = await fetch(`${url}/rest/v1/${table}?select=id&limit=1`, { headers });
+    const body = await parseBody(res);
+    if (res.status === 200 && Array.isArray(body)) {
+      pass(`${table}: select autenticado OK (${body.length} fila(s) visibles)`);
+    } else if (isMissingTable(res.status, body)) {
+      fail(missingTableMsg(table));
+    } else {
+      fail(`${table}: respuesta inesperada al select autenticado (HTTP ${res.status})`);
+    }
+  }
+}
+
 // --------------------------------------------------------------------- main
 
 async function main() {
@@ -238,8 +345,11 @@ async function main() {
   if (session) {
     await checkSpoofedInsert(url, anonKey, session);
     await checkOwnInsert(url, anonKey, session);
+    await checkDietPlanInsertRejected(url, anonKey, session);
+    await checkDietChildInsertRejected(url, anonKey, session);
+    await checkDietAuthenticatedSelect(url, anonKey, session);
   } else {
-    fail('checks (b) y (c) omitidos: sin sesión');
+    fail('checks (b) a (f) omitidos: sin sesión');
   }
 
   console.log(

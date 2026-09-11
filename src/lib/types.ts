@@ -79,3 +79,85 @@ export interface PlanExerciseWithExercise extends PlanExercise {
 export interface PlanExerciseDetail extends PlanExercise {
   exercises: Exercise;
 }
+
+/* ── Plan de dieta (specs/09) — espejan supabase/migrations/003_diet_schema.sql.
+   `time` llega de PostgREST como "HH:MM:SS"; la UI recorta a "HH:MM".
+   Contrato entre repos (client_requirement_dieta §6): NO cambiar formas sin
+   abrir un open item para el humano. Solo lectura desde la app. ── */
+
+/** §6 diet_plans — plan de dieta mensual (solo lectura; lo sube el repo Gym). */
+export interface DietPlan {
+  id: string;
+  user_id: string;
+  name: string;
+  goal: string | null;
+  start_date: string; // "YYYY-MM-DD"
+  end_date: string; // "YYYY-MM-DD"
+  status: "active" | "archived";
+  kcal_objetivo: number;
+  proteina_g: number;
+  carbohidrato_g: number;
+  grasa_g: number;
+  ventana_inicio: string | null; // "HH:MM:SS"; null = sin ventana de ayuno
+  ventana_fin: string | null; // "HH:MM:SS"
+  created_at: string;
+}
+
+/** §6 diet_meals — una comida del plan, en orden del día. */
+export interface DietMeal {
+  id: string;
+  diet_plan_id: string;
+  position: number;
+  title: string;
+  hora: string | null; // "HH:MM:SS"
+  kcal: number | null;
+  proteina_g: number | null;
+  items: string[]; // componentes con porción, uno por renglón
+  notes: string | null;
+}
+
+/** §6 diet_checklist_items — renglón de meal prep o de lista de súper. */
+export interface DietChecklistItem {
+  id: string;
+  diet_plan_id: string;
+  kind: "meal_prep" | "super";
+  position: number;
+  categoria: string | null; // agrupa la lista de súper
+  item: string;
+  cantidad: string | null; // texto libre: "1.6 kg", "4 latas", "al gusto"
+}
+
+/** §6 diet_supplements — suplemento con dosis/momento; recomendado=false = "no vale la pena". */
+export interface DietSupplement {
+  id: string;
+  diet_plan_id: string;
+  position: number;
+  nombre: string;
+  dosis: string | null;
+  momento: string | null;
+  nota: string | null;
+  recomendado: boolean;
+}
+
+/** §6 diet_sections — bloque informativo en Markdown. */
+export interface DietSection {
+  id: string;
+  diet_plan_id: string;
+  position: number;
+  kind: "reglas" | "rotacion" | "libre";
+  title: string;
+  body_md: string;
+}
+
+/**
+ * Plan de dieta con sus cuatro hijas embebidas — resultado de la consulta
+ * anidada de `services/diet.ts` (10 R4). Cada array llega ordenado por
+ * `position` asc. `diet_checklist_items` se carga desde 10 para que 11 no
+ * toque el service, aunque 10 no los renderiza (R19).
+ */
+export interface DietPlanFull extends DietPlan {
+  diet_meals: DietMeal[];
+  diet_checklist_items: DietChecklistItem[];
+  diet_supplements: DietSupplement[];
+  diet_sections: DietSection[];
+}

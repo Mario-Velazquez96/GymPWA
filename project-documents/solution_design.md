@@ -145,6 +145,111 @@ limit 10;  -- las series de la sesión anterior
 - `plans`, `plan_days`, `plan_exercises`: `select` solo donde `user_id = auth.uid()` (vía join al plan); escritura solo con service key (el agente).
 - `workout_logs`: `select/insert/update/delete` solo donde `user_id = auth.uid()`.
 
+### 3.7 Tablas de dieta (contrato PWA ↔ Gym, añadido 2026-09)
+
+Fuente: `client_requirement_dieta.md` §6. Migraciones
+`supabase/migrations/003_diet_schema.sql` (tablas + índice) y
+`004_diet_rls.sql` (RLS), ambas en el repo PWA. Tercer contrato entre repos,
+tras los IDs de ejercicio y las tablas §3.1–3.5.
+
+```sql
+create table diet_plans (
+  id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null references auth.users(id),
+  name           text not null,              -- "Recomposición — Septiembre 2026"
+  goal           text,                       -- contexto que originó el plan (InBody, actividad)
+  start_date     date not null,
+  end_date       date not null,
+  status         text not null default 'active' check (status in ('active','archived')),
+  kcal_objetivo  int not null,
+  proteina_g     int not null,
+  carbohidrato_g int not null,
+  grasa_g        int not null,
+  ventana_inicio time,                       -- null = sin ventana de ayuno
+  ventana_fin    time,
+  created_at     timestamptz not null default now()
+);
+
+-- Un solo plan `active` por usuario: upload-diet.mjs archiva el anterior ANTES de insertar.
+create unique index diet_plans_one_active_per_user
+  on diet_plans (user_id) where status = 'active';
+
+create table diet_meals (
+  id            uuid primary key default gen_random_uuid(),
+  diet_plan_id  uuid not null references diet_plans(id) on delete cascade,
+  position      int not null,                 -- orden dentro del día
+  title         text not null,                -- "Desayuno fuerte"
+  hora          time,                         -- 10:00
+  kcal          int,
+  proteina_g    int,
+  items         text[] not null default '{}', -- componentes con porción, uno por renglón
+  notes         text,
+  unique (diet_plan_id, position)
+);
+
+-- Meal prep y lista de súper comparten estructura: son listas que se tachan.
+create table diet_checklist_items (
+  id            uuid primary key default gen_random_uuid(),
+  diet_plan_id  uuid not null references diet_plans(id) on delete cascade,
+  kind          text not null check (kind in ('meal_prep','super')),
+  position      int not null,
+  categoria     text,                         -- "Proteínas", "Despensa"… (agrupa la lista de súper)
+  item          text not null,                -- "Pechuga de pollo"
+  cantidad      text,                         -- "1.6 kg" — texto, no número: hay "4 latas" y "al gusto"
+  unique (diet_plan_id, kind, position)
+);
+
+create table diet_supplements (
+  id            uuid primary key default gen_random_uuid(),
+  diet_plan_id  uuid not null references diet_plans(id) on delete cascade,
+  position      int not null,
+  nombre        text not null,                -- "Creatina monohidratada"
+  dosis         text,                         -- "5 g"
+  momento       text,                         -- "Diario, con el café de las 7:00"
+  nota          text,                         -- porqué o advertencia
+  recomendado   boolean not null default true,-- false = la lista de lo que NO vale la pena
+  unique (diet_plan_id, position)
+);
+
+create table diet_sections (
+  id            uuid primary key default gen_random_uuid(),
+  diet_plan_id  uuid not null references diet_plans(id) on delete cascade,
+  position      int not null,
+  kind          text not null check (kind in ('reglas','rotacion','libre')),
+  title         text not null,
+  body_md       text not null,                -- Markdown
+  unique (diet_plan_id, position)
+);
+```
+
+Reglas:
+
+- **Un solo plan `active` por usuario**, reforzado en la base por el índice
+  único parcial `diet_plans_one_active_per_user` (más estricto que `plans`,
+  §3.2, que solo lo enuncia). Consecuencia para `scripts/upload-diet.mjs`
+  (repo Gym): **archivar el plan anterior antes de insertar el nuevo**, en ese
+  orden; si no, el insert falla con violación de índice único.
+- **Sin índices extra en las hijas:** los `unique (diet_plan_id, …)` ya crean
+  un btree con `diet_plan_id` como columna inicial, que es el que usan el join
+  anidado de la PWA y las policies RLS.
+- **Sin checks semánticos** más allá de §6 (`ventana_inicio < ventana_fin`,
+  `kcal_objetivo > 0`, etc.): esa validación vive en `upload-diet.mjs`.
+- **RLS (`004_diet_rls.sql`):** `select` solo donde el plan pertenece a
+  `auth.uid()` (`diet_plans.user_id = auth.uid()`; hijas vía `exists` al
+  padre); **sin** policies de `insert`/`update`/`delete`. La PWA solo lee; el
+  repo Gym escribe con la service key (que pasa por alto RLS). Un `insert`
+  desde la app, incluso con el `user_id` propio, se rechaza con `42501`.
+- `time` se serializa por PostgREST como `"HH:MM:SS"` y se interpreta como
+  hora local de `America/Mexico_City`; la UI recorta a `"HH:MM"`. La ventana
+  no cruza medianoche.
+- El estado de tachado de las listas (meal prep / súper) **no se guarda en la
+  base**: vive en `localStorage` del dispositivo (feature 11).
+- Este esquema es un contrato entre repos, igual que §3.1–3.5: la PWA lo tipa
+  en `src/lib/types.ts` (`DietPlan`, `DietMeal`, `DietChecklistItem`,
+  `DietSupplement`, `DietSection`) y no se cambia de un lado sin avisar al
+  otro. Cualquier cambio de columnas, checks o enumeraciones (`status`,
+  `kind`) es un open item para el humano.
+
 ## 4. La PWA (repo nuevo)
 
 ### 4.1 Pantallas
