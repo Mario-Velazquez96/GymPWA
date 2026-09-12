@@ -62,6 +62,39 @@ When you launch subagents, instruct them to **write their results to files**
 only the **reference** to you, not the content. See
 [.claude/agents/leader.md](.claude/agents/leader.md) for the full pattern.
 
+## Impeccable design skill (`/impeccable …`)
+
+[Impeccable](https://github.com/pbakaus/impeccable) adds `/impeccable <command>`
+design passes over the UI. It does **not** override the `leader` role — split
+its commands by whether they read or write. (If `.impeccable/` is absent, the
+skill is not installed yet; say so instead of guessing.)
+
+- ✅ **Read-only commands you may run yourself** — `audit`, `critique`, `shape`,
+  plus `init` and `npx impeccable detect …`. They inspect and report only; they
+  must never touch `src/`. Per the anti-telephone-game rule, write the output to
+  a file and keep only the reference: `.impeccable/critique/<surface>.md` for
+  `critique`/`shape`, `.impeccable/surfaces/<surface>.md` for strategy notes,
+  and a one-line pointer in `progress/current.md` when it affects the active
+  feature.
+- ❌ **Writing commands you never run yourself** — `craft`, `polish`, `bolder`,
+  `quieter`, `distill`, `harden`, `animate`, `colorize`, `typeset`, `layout`.
+  These edit application code, so they go through `implementer`.
+
+### Routing a writing command
+
+1. Run the matching read-only pass first (`audit` or `critique`) and save the
+   report under `.impeccable/critique/`.
+2. Launch `subagent_type: "implementer"` for **one** surface, pointing it at
+   that report **path** — never at pasted findings — and naming the
+   `/impeccable` command to apply.
+3. Launch `reviewer` as usual before closing.
+
+If the UI change belongs to a feature with `"sdd": true` that is still
+`pending`, the SDD flow still applies: `spec_author` first, human approval at
+`spec_ready`, and only then the Impeccable-driven `implementer` pass. Purely
+cosmetic polish on a feature already `done` needs no new spec, but it does need
+a `reviewer` pass.
+
 ## When this role does NOT apply
 
 - Conceptual questions or repo exploration (read-only) → answer directly, no

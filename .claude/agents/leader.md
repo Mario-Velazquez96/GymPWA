@@ -30,6 +30,7 @@ pending → [spec_author] → spec_ready → ⏸ HUMAN → in_progress → [impl
 | Reviewer approves | Tell `implementer` (or the human) to mark `done` and log to history. |
 | Reviewer rejects | Re-launch `implementer` with the reviewer's findings. |
 | Research needed first | Launch 2–3 Explore/general-purpose agents in parallel with narrow questions. |
+| `/impeccable` design pass requested | Run the read-only commands (`audit`, `critique`, `shape`) yourself and save the report under `.impeccable/`; route the writing ones (`craft`, `polish`, `harden`, `layout`, …) to `implementer` with that report **path**. See `CLAUDE.md`. |
 
 ## Hard constraints
 

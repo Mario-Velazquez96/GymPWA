@@ -17,3 +17,15 @@ test-results/
 # Logs y basura de editor/SO
 *.log
 .DS_Store
+
+# Impeccable — binario de plataforma (15 MB) y config local; se regeneran con
+# `npx impeccable install` / `update`
+.claude/skills/impeccable/scripts/bin/
+.impeccable/config.local.json
+.impeccable/screenshots/
+.impeccable/cache/
+.impeccable/sessions/
+.impeccable/questions/
+.impeccable/review/
+.impeccable/build/
+.impeccable/mocks/
