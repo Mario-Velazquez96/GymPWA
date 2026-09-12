@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { PlanExercise, WorkoutLog } from "@/lib/types";
 import { todayLocalISO } from "@/lib/utils";
@@ -545,5 +545,172 @@ describe("LoggingSection — reps independientes de la unidad (08 R4)", () => {
     expect(within(row1).getByRole("button", { name: "Repeticiones serie 1" })).toHaveTextContent(
       "9",
     );
+  });
+});
+
+describe("LoggingSection — 14 ciclorama: amanecer y fila activa (R15, R16, R17)", () => {
+  function activeRows(): HTMLElement[] {
+    return screen.getAllByRole("listitem").filter((li) => li.dataset.active === "true");
+  }
+
+  it("solo la primera fila editable lleva el filo; al guardar, amanece y el filo avanza", async () => {
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    expect(activeRows()).toHaveLength(1);
+    expect(rowOf(1)).toHaveClass("horizon-edge-l");
+    expect(rowOf(1)).not.toHaveClass("dawn-sweep-day");
+    expect(rowOf(2)).not.toHaveClass("horizon-edge-l");
+
+    await userEvent.click(within(rowOf(1)).getByRole("button", { name: "Guardar serie" }));
+    await within(rowOf(1)).findByRole("button", { name: "✓ Guardada" });
+
+    expect(rowOf(1)).toHaveAttribute("data-status", "saved");
+    expect(rowOf(1)).toHaveClass("dawn-sweep", "dawn-sweep-day");
+    expect(rowOf(1)).not.toHaveClass("horizon-edge-l");
+    expect(activeRows()).toHaveLength(1);
+    expect(rowOf(2)).toHaveClass("horizon-edge-l");
+    expect(rowOf(2)).toHaveAttribute("data-active", "true");
+  });
+
+  it("una fila en error conserva el filo (sigue siendo la activa)", async () => {
+    mockLogSet.mockResolvedValueOnce({
+      data: null,
+      error: "No se pudo guardar la serie, reintenta",
+    });
+
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    await userEvent.click(within(rowOf(1)).getByRole("button", { name: "Guardar serie" }));
+    await within(rowOf(1)).findByRole("alert");
+
+    expect(rowOf(1)).toHaveAttribute("data-status", "error");
+    expect(rowOf(1)).toHaveClass("horizon-edge-l", "border-cue-fault");
+    expect(activeRows()).toHaveLength(1);
+  });
+
+  it("las series montadas como guardadas ya son de día y el filo cae en la primera editable", async () => {
+    mockGetSession.mockResolvedValue({
+      data: [
+        makeLog({ performed_at: todayLocalISO(), set_number: 1, weight_kg: 30, reps: 12 }),
+        makeLog({
+          id: "log-2",
+          performed_at: todayLocalISO(),
+          set_number: 2,
+          weight_kg: 32.5,
+          reps: 10,
+        }),
+      ],
+      error: null,
+    });
+
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    expect(rowOf(1)).toHaveClass("dawn-sweep-day");
+    expect(rowOf(2)).toHaveClass("dawn-sweep-day");
+    expect(rowOf(3)).not.toHaveClass("dawn-sweep-day");
+    expect(rowOf(3)).toHaveClass("horizon-edge-l");
+    expect(activeRows()).toHaveLength(1);
+  });
+
+  it("R12/R15: estados y controles con el vocabulario único (carga, error, Agregar serie)", async () => {
+    mockGetPrevious.mockReturnValueOnce(new Promise(() => undefined));
+    renderSection();
+    expect(screen.getByRole("status")).toHaveClass("animate-pulse", "motion-reduce:animate-none");
+    cleanup();
+
+    mockGetPrevious.mockResolvedValueOnce({
+      data: null,
+      error: "No se pudieron cargar las series",
+    });
+    renderSection();
+    expect(await screen.findByRole("alert")).toHaveClass("text-cue-fault");
+    expect(screen.getByRole("button", { name: "Reintentar" })).toHaveClass(
+      "bg-horizon",
+      "min-h-11",
+    );
+    cleanup();
+
+    renderSection();
+    await screen.findByRole("heading", { name: "Serie 1" });
+    expect(screen.getByRole("button", { name: "Agregar serie" })).toHaveClass(
+      "border-2",
+      "border-day",
+      "min-h-11",
+      "w-full",
+    );
+    expect(screen.getByRole("heading", { name: "Registro de series" })).toHaveClass(
+      "text-lg",
+      "font-bold",
+    );
+  });
+});
+
+describe("LoggingSection — correcciones de la revisión de cierre (finish-review-14)", () => {
+  it("fix 2: con 4 filas pendientes solo hay un 'Guardar serie' de horizonte", async () => {
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    const saveButtons = screen.getAllByRole("button", { name: "Guardar serie" });
+    expect(saveButtons).toHaveLength(4);
+
+    const lit = saveButtons.filter((button) => button.className.includes("bg-horizon"));
+    expect(lit).toHaveLength(1);
+    // El encendido es el de la fila activa (la que lleva el filo de horizonte).
+    expect(rowOf(1)).toContainElement(lit[0] ?? null);
+    for (const button of saveButtons.slice(1)) {
+      expect(button).toHaveClass("border-2", "border-day");
+      expect(button).toBeEnabled();
+    }
+  });
+
+  it("fix 2: al guardar la fila activa, el horizonte pasa a la siguiente pendiente", async () => {
+    const user = userEvent.setup();
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    await user.click(within(rowOf(1)).getByRole("button", { name: "Guardar serie" }));
+    await screen.findByRole("button", { name: "✓ Guardada" });
+
+    const lit = screen
+      .getAllByRole("button", { name: "Guardar serie" })
+      .filter((button) => button.className.includes("bg-horizon"));
+    expect(lit).toHaveLength(1);
+    expect(rowOf(2)).toContainElement(lit[0] ?? null);
+    expect(rowOf(2)).toHaveClass("horizon-edge-l");
+  });
+});
+
+describe("LoggingSection — ronda 2 (punto C: tres niveles de acción)", () => {
+  beforeEach(() => {
+    mockGetPrevious.mockResolvedValue({ data: previousSession, error: null });
+    mockGetSession.mockResolvedValue({ data: [], error: null });
+    stubLogSetOk();
+  });
+
+  it("primario, secundario y terciario se distinguen: 'Agregar serie' es el más callado", async () => {
+    renderSection();
+
+    await screen.findByRole("heading", { name: "Serie 1" });
+    const saveButtons = screen.getAllByRole("button", { name: "Guardar serie" });
+    const add = screen.getByRole("button", { name: "Agregar serie" });
+
+    // Primario: horizonte, solo en la fila activa; nunca atenuado.
+    const lit = saveButtons.filter((button) => button.className.includes("bg-horizon"));
+    expect(lit).toHaveLength(1);
+    expect(lit[0]).not.toHaveClass("opacity-60");
+
+    // Secundario: las filas pendientes siguen escribiendo y van a plena luz.
+    for (const button of saveButtons.filter((button) => button !== lit[0])) {
+      expect(button).toHaveClass("border-2", "border-day", "bg-transparent");
+      expect(button).not.toHaveClass("opacity-60");
+    }
+
+    // Terciario: mismo rectángulo táctil, al 60 %.
+    expect(add).toHaveClass("border-2", "border-day", "min-h-11", "w-full", "opacity-60");
+    await userEvent.click(add);
+    expect(screen.getByRole("heading", { name: "Serie 5" })).toBeInTheDocument();
   });
 });

@@ -4,8 +4,11 @@
  */
 export default function LoadingScreen() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-slate-900 p-6 text-slate-100">
-      <p role="status" className="animate-pulse text-lg text-slate-300">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-cyc-black p-6 text-day">
+      <p
+        role="status"
+        className="animate-pulse py-10 text-center text-lg text-day/60 motion-reduce:animate-none"
+      >
         Cargando…
       </p>
     </main>

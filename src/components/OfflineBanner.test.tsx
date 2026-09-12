@@ -28,3 +28,13 @@ describe("OfflineBanner (R12, R13)", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });
+
+describe("OfflineBanner — 14 ciclorama (R20)", () => {
+  it("es una banda de apagón con texto legible, sin radio", () => {
+    render(<OfflineBanner savedAt="2026-09-10T15:15:00Z" />);
+
+    const banner = screen.getByRole("status");
+    expect(banner).toHaveClass("bg-blackout", "text-day/90", "px-4");
+    expect(banner.className).not.toMatch(/rounded/);
+  });
+});

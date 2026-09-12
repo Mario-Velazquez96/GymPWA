@@ -25,6 +25,11 @@ function round2(value: number): number {
  * mínimo, y valor central tappable que se convierte en `<input
  * inputmode="decimal">` para entrada numérica directa (commit en blur/Enter;
  * entrada no numérica revierte al valor previo).
+ *
+ * Contorno heredado (14 R18): −/+ y el valor usan `currentColor`, así que en
+ * una fila de noche son blancos y en una fila amanecida (guardada) toman la
+ * tinta negra sin prop extra. El valor no se atenúa al deshabilitarse: en una
+ * serie guardada el número es el registro.
  */
 export default function Stepper({
   label,
@@ -53,10 +58,10 @@ export default function Stepper({
   };
 
   const buttonClass =
-    "flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-slate-700 text-xl font-bold text-slate-100 transition-colors hover:bg-slate-600 disabled:opacity-40";
+    "flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-sm border-2 border-current text-xl font-bold text-current transition-opacity duration-150 hover:opacity-80 motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex w-full items-center gap-2">
       <button
         type="button"
         aria-label={`Disminuir ${label}`}
@@ -80,7 +85,7 @@ export default function Stepper({
               commit();
             }
           }}
-          className="min-h-11 w-20 rounded-lg border border-sky-500 bg-slate-900 text-center text-lg font-semibold text-slate-100 outline-none"
+          className="min-h-11 w-full min-w-24 flex-1 rounded-sm border-2 border-horizon-rose bg-transparent px-2 text-center text-3xl font-extrabold text-current outline-none tabular-nums"
         />
       ) : (
         <button
@@ -88,10 +93,10 @@ export default function Stepper({
           aria-label={label}
           disabled={disabled}
           onClick={() => setDraft(formatValue(value))}
-          className="min-h-11 w-20 rounded-lg bg-slate-800 text-center text-lg font-semibold text-slate-100 transition-colors hover:bg-slate-700 disabled:opacity-60"
+          className="min-h-11 min-w-24 flex-1 rounded-sm border-2 border-current px-2 text-center text-3xl font-extrabold text-current tabular-nums disabled:cursor-default"
         >
           {formatValue(value)}
-          {unit !== undefined ? ` ${unit}` : ""}
+          {unit !== undefined && <span className="text-base font-bold"> {unit}</span>}
         </button>
       )}
 

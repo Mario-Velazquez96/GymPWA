@@ -41,7 +41,10 @@ export default function DietScreen() {
   function renderBody(): ReactElement {
     if (loading) {
       return (
-        <p role="status" className="animate-pulse py-10 text-center text-lg text-slate-300">
+        <p
+          role="status"
+          className="animate-pulse py-10 text-center text-lg text-day/60 motion-reduce:animate-none"
+        >
           Cargando dieta…
         </p>
       );
@@ -49,14 +52,14 @@ export default function DietScreen() {
 
     if (error !== null) {
       return (
-        <div className="flex flex-col items-center gap-4 py-10">
-          <p role="alert" className="text-center text-lg text-red-400">
+        <div className="flex flex-col items-center gap-4 px-4 py-10">
+          <p role="alert" className="text-center text-base font-semibold text-cue-fault">
             {error}
           </p>
           <button
             type="button"
             onClick={retry}
-            className="min-h-11 rounded-lg bg-sky-600 px-6 text-base font-semibold text-white transition-colors hover:bg-sky-500"
+            className="min-h-11 rounded-sm bg-horizon px-6 text-base font-bold text-day transition-colors duration-150 active:bg-none active:bg-dawn-rose active:text-cyc-black motion-reduce:transition-none"
           >
             Reintentar
           </button>
@@ -66,7 +69,7 @@ export default function DietScreen() {
 
     if (plan === null) {
       return (
-        <p className="py-10 text-center text-lg text-slate-300">
+        <p className="px-4 py-10 text-center text-lg text-day/90">
           Aún no tienes un plan de dieta asignado
         </p>
       );
@@ -84,25 +87,31 @@ export default function DietScreen() {
     const otrasSecciones = plan.diet_sections.filter((section) => section.kind !== "rotacion");
 
     return (
-      <>
-        <p className="text-sm text-slate-400">{plan.name}</p>
+      <div className="flex flex-col gap-4 pt-4">
+        <p className="px-4 text-xs font-bold tracking-plot text-day/60 uppercase">{plan.name}</p>
 
-        <MacroSummary plan={plan} />
+        <div className="px-4">
+          <MacroSummary plan={plan} />
+        </div>
 
-        <EatingWindow plan={plan} state={getWindowState(plan, plan.diet_meals, nowMinutes)} />
+        <div className="px-4">
+          <EatingWindow plan={plan} state={getWindowState(plan, plan.diet_meals, nowMinutes)} />
+        </div>
 
-        <section aria-labelledby="comidas" className="flex flex-col gap-3">
-          <h2 id="comidas" className="text-xl font-semibold text-slate-100">
+        <section aria-labelledby="comidas" className="flex flex-col px-4">
+          <h2 id="comidas" className="border-b border-blackout py-2 text-lg font-bold text-day">
             Comidas
           </h2>
           {plan.diet_meals.length === 0 ? (
-            <p className="text-base text-slate-300">Este plan no tiene comidas</p>
+            <p className="py-3 text-base text-day/90">Este plan no tiene comidas</p>
           ) : (
             plan.diet_meals.map((meal) => <MealCard key={meal.id} meal={meal} />)
           )}
         </section>
 
-        <SupplementList supplements={plan.diet_supplements} />
+        <div className="px-4">
+          <SupplementList supplements={plan.diet_supplements} />
+        </div>
 
         {(mealPrep.length > 0 || rotacion.length > 0) && (
           <CollapsibleSection title="Qué cocinar">
@@ -117,7 +126,9 @@ export default function DietScreen() {
             )}
             {rotacion.map((section) => (
               <div key={section.id} className="mt-4">
-                <h3 className="font-semibold text-slate-100">{section.title}</h3>
+                <h3 className="text-xs font-bold tracking-plot text-day/60 uppercase">
+                  {section.title}
+                </h3>
                 <Markdown source={section.body_md} />
               </div>
             ))}
@@ -138,8 +149,8 @@ export default function DietScreen() {
         )}
 
         {otrasSecciones.length > 0 && (
-          <section aria-labelledby="secciones" className="flex flex-col gap-2">
-            <h2 id="secciones" className="text-xl font-semibold text-slate-100">
+          <section aria-labelledby="secciones" className="flex flex-col gap-px">
+            <h2 id="secciones" className="px-4 py-2 text-lg font-bold text-day">
               Más del plan
             </h2>
             {otrasSecciones.map((section) => (
@@ -149,13 +160,13 @@ export default function DietScreen() {
             ))}
           </section>
         )}
-      </>
+      </div>
     );
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 bg-slate-900 p-4 pb-24 text-slate-100">
-      <h1 className="text-2xl font-bold">Dieta</h1>
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-cyc-black pb-24 text-day">
+      <h1 className="border-b border-blackout px-4 py-3 text-2xl font-bold">Dieta</h1>
       {isStale && savedAt !== null && <OfflineBanner savedAt={savedAt} />}
       {renderBody()}
     </main>

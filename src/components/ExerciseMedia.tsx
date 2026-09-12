@@ -25,7 +25,7 @@ export default function ExerciseMedia({ name, imageUrl, gifUrl }: ExerciseMediaP
   return (
     <div
       data-testid="exercise-media"
-      className="relative mx-auto aspect-square w-full max-w-[240px] overflow-hidden rounded-xl bg-slate-800"
+      className="relative mx-auto aspect-square w-full max-w-[240px] overflow-hidden rounded-md bg-blackout"
     >
       {!thumbFailed && (
         <img
@@ -42,7 +42,7 @@ export default function ExerciseMedia({ name, imageUrl, gifUrl }: ExerciseMediaP
           alt={`Demostración de ${name}`}
           onLoad={() => setGifStatus("loaded")}
           onError={() => setGifStatus("error")}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 motion-reduce:transition-none ${
             gifStatus === "loaded" ? "opacity-100" : "opacity-0"
           }`}
         />

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { PlanExerciseDetail } from "@/lib/types";
@@ -282,5 +282,86 @@ describe("ExerciseScreen — espacio para la barra inferior (10 R3)", () => {
 
     await screen.findByRole("heading", { name: "Press de banca", level: 1 });
     expect(screen.getByRole("main")).toHaveClass("pb-24");
+  });
+});
+
+describe("ExerciseScreen — 14 ciclorama (R12, R13, R14)", () => {
+  it("R13: header nocturno con back secundario y título a 24 px", async () => {
+    mockGetDetail.mockResolvedValue({ data: makeDetail(), error: null });
+
+    renderScreen();
+
+    const back = await screen.findByRole("link", { name: "Volver" });
+    expect(back).toHaveClass("border-2", "border-day", "min-h-11", "min-w-11", "rounded-sm");
+    expect(back.closest("header")).toHaveClass("border-blackout");
+    expect(screen.getByRole("heading", { name: "Press de banca", level: 1 })).toHaveClass(
+      "text-2xl",
+      "font-bold",
+    );
+  });
+
+  it("R14: metas en numerales tabulares grandes, chips sin píldora y notas con borde rosa", async () => {
+    mockGetDetail.mockResolvedValue({
+      data: makeDetail({ notes: "Controla la bajada" }),
+      error: null,
+    });
+
+    renderScreen();
+
+    const target = await screen.findByText(/4 × 8-12/);
+    expect(target).toHaveClass("text-3xl", "font-extrabold", "tabular-nums");
+    expect(screen.getByText(/Descanso: 120 s/)).toHaveClass("text-day/60");
+
+    const chip = screen.getByText("barbell");
+    expect(chip).toHaveClass("rounded-sm", "border", "border-day/40");
+    expect(chip).not.toHaveClass("rounded-full");
+
+    expect(screen.getByText("Controla la bajada")).toHaveClass("border-2", "border-dawn-rose");
+    expect(screen.getByRole("link", { name: "Ver historial" })).toHaveClass(
+      "border-2",
+      "border-day",
+      "w-full",
+      "min-h-11",
+    );
+    expect(screen.getByRole("link", { name: /Gym visual/ })).toHaveClass("underline", "min-h-11");
+  });
+
+  it("R12: carga, error y 'Volver a Hoy' usan el vocabulario único de estados", async () => {
+    mockGetDetail.mockReturnValueOnce(new Promise(() => undefined));
+    renderScreen();
+    expect(screen.getByRole("status")).toHaveClass("animate-pulse", "motion-reduce:animate-none");
+    cleanup();
+
+    mockGetDetail.mockResolvedValueOnce({ data: null, error: "No se pudo cargar el ejercicio" });
+    renderScreen();
+    expect(await screen.findByRole("alert")).toHaveClass("text-cue-fault", "font-semibold");
+    expect(screen.getByRole("button", { name: "Reintentar" })).toHaveClass(
+      "bg-horizon",
+      "min-h-11",
+    );
+    cleanup();
+
+    mockGetDetail.mockResolvedValueOnce({ data: null, error: null });
+    renderScreen("nope");
+    expect(await screen.findByText("Ejercicio no encontrado")).toHaveClass("text-day/90");
+    expect(screen.getByRole("link", { name: "Volver a Hoy" })).toHaveClass(
+      "bg-horizon",
+      "min-h-11",
+    );
+  });
+});
+
+describe("ExerciseScreen — ronda 2 (punto C: tres niveles de acción)", () => {
+  it("'Ver historial' es terciario: mismo cuadro de 44 px, al 60 %", async () => {
+    mockGetDetail.mockResolvedValue({ data: makeDetail(), error: null });
+
+    renderScreen();
+
+    const history = await screen.findByRole("link", { name: "Ver historial" });
+    expect(history).toHaveClass("border-2", "border-day", "min-h-11", "w-full", "opacity-60");
+    // El control de volver, que es chrome de navegación del encabezado, no se atenúa.
+    expect(screen.getByRole("link", { name: "Volver" })).not.toHaveClass("opacity-60");
+    // El primario sigue siendo exclusivo del horizonte (aquí, la fila activa del registro).
+    expect(history.className).not.toContain("bg-horizon");
   });
 });

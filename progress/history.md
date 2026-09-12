@@ -609,3 +609,83 @@ red, vuelta de la señal, y reapertura tras **más de 1 h** para ejercitar el
 token caducado). Ajenos a 12 y sin empeorar: `e2e/logging.spec.ts` y
 `e2e/history.spec.ts` siguen rojos por `13_fix_lb_prefill_validation`, y
 `e2e/today.spec.ts` por rozar el timeout de 30 s.
+
+## 2026-09-12 — 14_ui_redesign_cyclorama: implemented, reviewed (APPROVE), DONE
+
+Primera feature puramente **visual** del proyecto. El humano pidió el 2026-09-12
+"mejorar todo el UI, que se vea mejor y con paleta más llamativa" y el leader lo
+resolvió con el skill **Impeccable**: `/impeccable init` levantó `PRODUCT.md`
+(prisa entre series, manos sudadas o con guantes, luz fuerte del gym) y la ronda
+de dirección (`concept-seed --scope direction`, seed **eee43132**) ofreció una
+dirección asignada y varias retadoras; el humano eligió **"Ciclorama de
+amanecer"** (`stagecraft-theater-lighting-cyclorama-dawn`) por encima de la
+asignada. De ahí salieron la paleta oficial —negro #050505, horizonte cobalto
+#0A33FF → rosa #FF6AAE, rosa pálido #FFC1D6, blanco roto #F7F5FF, día blanco
+#FFFFFF— y el contrato de dirección en
+`.impeccable/surfaces/src-screens-todayscreen-tsx.md`.
+
+**Solo presentación.** Las 5 pantallas, el app shell (`AppHeader`, `BottomNav`),
+los 22 componentes, `src/index.css` (Tailwind v4 `@theme` + 4 `@utility`), el
+`theme_color` del manifest y el `<meta name="theme-color">` de `index.html`.
+`git diff --stat` sobre `src/services`, `src/hooks`, `src/lib`, `src/App.tsx`,
+`src/main.tsx`, `supabase/`, `e2e/helpers.ts`, `package.json`, `pnpm-lock.yaml`
+y `.env.example` → **salida vacía**: cero cambios de datos, consultas, rutas,
+copy, dependencias, env vars, migraciones ni reglas del service worker (`/rest/`
+y `/auth/` siguen sin cachearse). La única escritura a Supabase sigue siendo
+`services/logs.ts#logSet` sobre **`workout_logs`**, y la accesibilidad heredada
+quedó intacta atributo por atributo (`aria-label` 20→20, `role=` 20→20,
+`aria-pressed`, `aria-checked`, `aria-current`, `aria-live`, `aria-labelledby`
+sin variación). De los 732 asserts heredados solo se reescribió **uno de color**
+(`bg-slate-800` → `bg-blackout` en `ExerciseMedia.test.tsx`).
+
+**Decisiones del humano en el gate del spec:** (A) Historial en **día blanco**;
+(B) Dieta con las **fases literales** del mundo según el estado de la ventana de
+alimentación; (C-1) la fase de ejercicio se deriva **solo dentro de la pantalla
+de Ejercicio, sin ninguna consulta nueva** (en Hoy todas las filas son noche;
+"las filas hechas ya son de día" queda para una feature futura); (D) **sin
+webfont**, tipografía del sistema; (E) las flechas ‹ › y los signos −/+ como
+**glifos de texto**, no como iconos. Ya en vuelo, el humano firmó la **Enmienda
+1** de `requirements.md`, que reescribe R9/R10 para autorizar el **fix 4**: el
+título del día pasa a ser el protagonista de la banda de horizonte ("HOY · LUN
+14 SEP" como kicker de 12 px sobre "Torso · empuje" a 22 px bold) y desaparece
+el `<h2>` huérfano de debajo; autorizó exactamente dos asserts de
+`TodayScreen.test.tsx`.
+
+**Ciclo de revisión.** El `impeccable-finish-reviewer` abrió con **7 fixes
+materiales** (nombres truncados en Hoy, el horizonte repetido en cuatro slabs
+idénticos, miniaturas blancas que robaban el rol de "día", el orden de lectura
+de la banda, `hover:bg-blackout` pintando la fila tocada con el color de
+deshabilitado, y la columna de escritorio descolgada del header). **Ronda 1:** 6
+aplicadas, y el `verdict pass 1` detectó **2 regresiones** propias del arreglo
+(seis rectángulos idénticos en Ejercicio y miniaturas demasiado apagadas a
+`opacity-60`). **Ronda 2:** los 4 puntos restantes —fix 4 tras la Enmienda 1,
+el clipping de la fila 07 a tres líneas, los tres niveles de acción y las
+miniaturas a `opacity-75`— resueltos; `verdict pass 2` → **`ship`**
+(`.impeccable/critique/finish-review-14.md`), con contraste muestreado sobre la
+banda nueva (kicker 6.5:1, título 4.7:1).
+
+Gates: **`./init.sh` verde**, typecheck y lint en 0, **868/868 tests** en 50
+archivos, cobertura **98.8 % stmts / 93.63 % branches / 100 % funcs / 98.75 %
+lines** (umbral 80), build OK y **CSS 1.116×** el tamaño de referencia (límite
+R30: ≤ 2×), sin tipos de artefacto nuevos en `dist/`; **detector de Impeccable
+`[]`** (sin hallazgos). Blindaje permanente en `src/theme.test.ts`: recorre los
+33 `.tsx` de producción y prohíbe paleta Tailwind, hex sueltos, `style={{`,
+sombras, `backdrop-`, gradientes fuera del token y radios grandes, además de
+fijar la lista exacta de dependencias. Review del harness: **APPROVE**, 0
+bloqueantes, 6 menores (`progress/review_14_ui_redesign_cyclorama.md`);
+trazabilidad R1–R33 y detalle de implementación en
+`progress/impl_14_ui_redesign_cyclorama.md`. E2E no corrido en esta feature (por
+instrucción: requiere credenciales en vivo) y los dos fallos preexistentes
+—timeout de `e2e/today.spec.ts` y el helper `readDietContent` de
+`e2e/diet-offline.spec.ts`— siguen abiertos y son **ajenos** a 14.
+
+Artefactos nuevos que deja la feature: **`PRODUCT.md`** (contexto de producto),
+**`DESIGN.md`** (sistema visual documentado por `impeccable-documenter`),
+**`.impeccable/design.json`**,
+**`.impeccable/surfaces/src-screens-todayscreen-tsx.md`** (contrato de
+dirección) y **`.impeccable/critique/finish-review-14.md`** (las dos rondas y el
+`ship`).
+
+**⏳ PENDIENTE (humano):** smoke manual del rediseño en el iPhone y la decisión
+de versionado de las 8 capturas de `.impeccable/review/` (hoy ignoradas por
+`.gitignore`); ambos anotados en `progress/current.md`.

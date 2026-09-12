@@ -28,7 +28,9 @@ function groupKey(group: ChecklistGroup): string {
  * haya nada marcado) y los renglones, planos o agrupados por categoría.
  *
  * Presentacional puro: no consulta datos: el estado marcado y sus dos acciones
- * llegan por props desde `useChecklist` (R15).
+ * llegan por props desde `useChecklist` (R15). Contador y categorías van en
+ * kicker; "Desmarcar todo" es un control secundario que se apaga al no haber
+ * nada marcado (14 R25).
  */
 export default function Checklist({
   title,
@@ -50,14 +52,17 @@ export default function Checklist({
   return (
     <section aria-label={title} className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-slate-400" aria-live="polite">
+        <p
+          className="text-xs font-bold tracking-plot text-day/60 uppercase tabular-nums"
+          aria-live="polite"
+        >
           {done} de {total} marcados
         </p>
         <button
           type="button"
           onClick={onClearAll}
           disabled={done === 0}
-          className="min-h-11 rounded-lg px-4 text-sm font-semibold text-sky-400 disabled:text-slate-600"
+          className="min-h-11 rounded-sm border-2 border-day bg-transparent px-4 text-sm font-bold text-day transition-colors duration-150 hover:bg-day hover:text-cyc-black motion-reduce:transition-none disabled:cursor-not-allowed disabled:border-blackout disabled:bg-blackout disabled:text-day/60 disabled:hover:bg-blackout"
         >
           Desmarcar todo
         </button>
@@ -66,11 +71,11 @@ export default function Checklist({
       {groups.map((group) => (
         <div key={groupKey(group)}>
           {showHeadings && (
-            <h3 className="mb-1 text-sm font-semibold tracking-wide text-slate-400 uppercase">
+            <h3 className="mb-1 text-xs font-bold tracking-plot text-day/60 uppercase">
               {group.label}
             </h3>
           )}
-          <ul className="divide-y divide-slate-800">
+          <ul className="-mx-4 divide-y divide-blackout border-y border-blackout">
             {group.items.map((item) => (
               <ChecklistItem
                 key={item.id}

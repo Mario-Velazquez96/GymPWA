@@ -13,15 +13,11 @@ import { test, expect, type Page } from "@playwright/test";
  */
 
 // Host ficticio que cumple el predicado de la regla runtime (*.supabase.co).
-const STORAGE_URL =
-  "https://e2e-test.supabase.co/storage/v1/object/public/exercise-media/e2e.gif";
+const STORAGE_URL = "https://e2e-test.supabase.co/storage/v1/object/public/exercise-media/e2e.gif";
 const REST_URL = "https://e2e-test.supabase.co/rest/v1/plans?select=id";
 
 // GIF transparente de 1x1 px (base64).
-const GIF_1PX = Buffer.from(
-  "R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
-  "base64",
-);
+const GIF_1PX = Buffer.from("R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==", "base64");
 
 type ManifestShape = {
   name: string;
@@ -43,18 +39,14 @@ function serviceWorkerState(page: Page): Promise<string | null> {
 }
 
 test.describe("07_pwa_install_and_cache", () => {
-  test("R1/R3: SW activo, link de manifest presente y campos requeridos", async ({
-    page,
-  }) => {
+  test("R1/R3: SW activo, link de manifest presente y campos requeridos", async ({ page }) => {
     await page.goto("/login");
     // `ready` resuelve al existir un worker activo, que puede seguir en
     // "activating"; se sondea hasta "activated".
-    await expect.poll(() => serviceWorkerState(page), { timeout: 5_000 }).toBe(
-      "activated",
-    );
+    await expect.poll(() => serviceWorkerState(page), { timeout: 5_000 }).toBe("activated");
 
     const manifestHref = await page.getAttribute('link[rel="manifest"]', "href");
-    if (!manifestHref) throw new Error("Falta <link rel=\"manifest\"> en el documento");
+    if (!manifestHref) throw new Error('Falta <link rel="manifest"> en el documento');
 
     const manifest = await page.evaluate(async (href): Promise<ManifestShape> => {
       const res = await fetch(href);
@@ -68,6 +60,9 @@ test.describe("07_pwa_install_and_cache", () => {
     expect(manifest.start_url).toBe("/");
     expect(manifest.theme_color).toBeTruthy();
     expect(manifest.background_color).toBeTruthy();
+    // 14 R28: negro de ciclorama en la barra de estado y el splash.
+    expect(manifest.theme_color).toBe("#050505");
+    expect(manifest.background_color).toBe("#050505");
 
     const sizes = manifest.icons.map((i) => i.sizes);
     expect(sizes).toContain("192x192");
@@ -76,9 +71,7 @@ test.describe("07_pwa_install_and_cache", () => {
     expect(purposes).toContain("maskable");
   });
 
-  test("R4/R7: el media de Storage se sirve desde la caché 'exercise-media'", async ({
-    page,
-  }) => {
+  test("R4/R7: el media de Storage se sirve desde la caché 'exercise-media'", async ({ page }) => {
     await page.context().route("**/storage/**", async (route) => {
       await route.fulfill({
         status: 200,

@@ -66,3 +66,18 @@ describe("UnitToggle (08 R1)", () => {
     }
   });
 });
+
+describe("UnitToggle — 14 ciclorama (R15)", () => {
+  it("la unidad activa es día/seleccionado y la otra un control secundario de noche", () => {
+    render(<UnitToggle unit="lb" onChange={onChange} />);
+
+    const lb = screen.getByRole("button", { name: "lb" });
+    const kg = screen.getByRole("button", { name: "kg" });
+    expect(lb).toHaveClass("bg-day", "text-cyc-black", "border-2", "rounded-sm");
+    expect(kg).toHaveClass("border-day", "bg-transparent", "text-day");
+    expect(kg).not.toHaveClass("bg-day");
+    for (const button of [lb, kg]) {
+      expect(button).toHaveClass("min-h-11", "min-w-11");
+    }
+  });
+});

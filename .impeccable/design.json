@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-12T00:00:00.000Z",
+  "title": "Design System: Rutinas Gym",
+  "extensions": {
+    "colorMeta": {
+      "cyc-black": {
+        "role": "neutral",
+        "displayName": "Cyclorama Black",
+        "canonical": "#050505",
+        "tonalRamp": ["#050505", "#111111", "#1d1d1d", "#2a2a2a", "#3a3a3a", "#6b6b6b", "#a5a5a5", "#e6e6e6"]
+      },
+      "horizon-cobalt": {
+        "role": "primary",
+        "displayName": "Cobalt Horizon",
+        "canonical": "#0a33ff",
+        "tonalRamp": ["#020b3d", "#04156b", "#061f9c", "#0829cd", "#0a33ff", "#5a72ff", "#8f9dff", "#ccd3ff"]
+      },
+      "horizon-rose": {
+        "role": "primary",
+        "displayName": "Rose Gather",
+        "canonical": "#ff6aae",
+        "tonalRamp": ["#3d0a25", "#6b1240", "#9c1a5c", "#cd2278", "#ff3f96", "#ff6aae", "#ff9bc8", "#ffd2e5"]
+      },
+      "dawn-rose": {
+        "role": "secondary",
+        "displayName": "Dawn Rose",
+        "canonical": "#ffc1d6",
+        "tonalRamp": ["#3d1f29", "#6b3746", "#9c4f64", "#cd6882", "#f38aa4", "#ffa8c1", "#ffc1d6", "#ffe6ef"]
+      },
+      "day-wash": {
+        "role": "neutral",
+        "displayName": "Day Wash",
+        "canonical": "#f7f5ff",
+        "tonalRamp": ["#1c1b26", "#312f42", "#48455e", "#615d7d", "#8b87a8", "#b6b3cd", "#dedcec", "#f7f5ff"]
+      },
+      "day": {
+        "role": "neutral",
+        "displayName": "White Day",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#1f1f1f", "#3a3a3a", "#575757", "#767676", "#9c9c9c", "#c2c2c2", "#e6e6e6", "#ffffff"]
+      },
+      "blackout": {
+        "role": "neutral",
+        "displayName": "Blackout",
+        "canonical": "#3a3a3a",
+        "tonalRamp": ["#0d0d0d", "#1a1a1a", "#272727", "#3a3a3a", "#5c5c5c", "#8a8a8a", "#b8b8b8", "#e4e4e4"]
+      },
+      "cue-fault": {
+        "role": "tertiary",
+        "displayName": "Cue Fault",
+        "canonical": "#e0342c",
+        "tonalRamp": ["#3b0b08", "#650f0c", "#8e1712", "#b6221b", "#e0342c", "#ec6a63", "#f49c97", "#fbd3d1"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display Numeral", "purpose": "Stepper values and plan targets. Tabular, 800. The largest element on any screen is always a number." },
+      "headline": { "displayName": "Headline", "purpose": "Screen titles inside a screen header: exercise name, Historial, Dieta, Iniciar sesion." },
+      "title": { "displayName": "Band Title", "purpose": "The plan-day title inside the horizon band; the one string the app is opened to read." },
+      "subtitle": { "displayName": "Section", "purpose": "Section headings and per-band secondary numerals (sets x reps, history set lines)." },
+      "body": { "displayName": "Body", "purpose": "Instructions, state lines, comparisons. 90% white on a night band; black ink on a day band." },
+      "body-strong": { "displayName": "Body Strong", "purpose": "Exercise names in a band and all button labels." },
+      "caption": { "displayName": "Caption", "purpose": "Sub-lines and notes at 60% white." },
+      "label": { "displayName": "Label", "purpose": "Form labels, dates, tile labels, table headers, and the zero-padded order numeral. Uppercase and 0.08em tracking applied by CSS; the DOM keeps sentence case." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "sweep-duration", "value": "200ms", "purpose": "The dawn sweep: a completed band rises from night to day in one move." },
+      { "name": "ease-sweep", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Easing of the dawn sweep; fast out, settling in, like light arriving." },
+      { "name": "state-transition", "value": "150ms (color only)", "purpose": "Button and link color state changes. Color and border only; never transform or opacity on a primary." },
+      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce -> transition: none", "purpose": "Every transition and the loading pulse are cut, not slowed. The phase change becomes an instant switch." }
+    ],
+    "breakpoints": [
+      { "name": "column", "value": "448px" },
+      { "name": "design-viewport", "value": "390px" }
+    ],
+    "surfaces": [
+      { "name": "horizon", "value": "linear-gradient(to bottom, #0a33ff, #ff6aae)", "purpose": "The only gradient that reads as a gradient. Day band, primary button, and the 3 px active edge." },
+      { "name": "horizon-edge-l", "value": "::before, inset-block 0, left 0, width 3px, background-image: the horizon", "purpose": "Marks the one live row or band." },
+      { "name": "horizon-edge-t", "value": "::before, inset-inline 0, top 0, height 3px, linear-gradient(to right, #0a33ff, #ff6aae)", "purpose": "Marks the active bottom-nav tab; laid horizontally because a vertical ramp across 3 px renders as one flat color." },
+      { "name": "focus-ring", "value": "outline: 2px solid #ff6aae; outline-offset: 2px", "purpose": "Global :focus-visible treatment." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button (horizon)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one lit action on a screen: saving the active set, retrying a failed load. Pressed, it drops the gradient for flat dawn rose.",
+      "html": "<button class=\"ds-btn-primary\">Guardar serie</button>",
+      "css": ".ds-btn-primary { min-height: 44px; padding: 0 24px; border: none; border-radius: 4px; background-image: linear-gradient(to bottom, #0a33ff, #ff6aae); color: #fff; font: 700 16px/20px ui-sans-serif, system-ui, -apple-system, sans-serif; transition: background-color 150ms cubic-bezier(0.16,1,0.3,1), color 150ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-primary:focus-visible { outline: 2px solid #ff6aae; outline-offset: 2px; } .ds-btn-primary:active { background-image: none; background-color: #ffc1d6; color: #050505; } @media (prefers-reduced-motion: reduce) { .ds-btn-primary { transition: none; } }"
+    },
+    {
+      "name": "Secondary Button (day border)",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A pending write that is not the active row, the back control, the day arrows. Full-light white border; fills white on press.",
+      "html": "<button class=\"ds-btn-secondary\">Guardar serie</button>",
+      "css": ".ds-btn-secondary { min-height: 44px; min-width: 44px; padding: 0 16px; border: 2px solid #fff; border-radius: 4px; background: transparent; color: #fff; font: 700 16px/20px ui-sans-serif, system-ui, -apple-system, sans-serif; transition: background-color 150ms, color 150ms; } .ds-btn-secondary:hover { background: #fff; color: #050505; } .ds-btn-secondary:active { background: #ffc1d6; color: #050505; } .ds-btn-secondary:focus-visible { outline: 2px solid #ff6aae; outline-offset: 2px; } .ds-btn-secondary:disabled { border-color: #3a3a3a; background: #3a3a3a; color: rgba(255,255,255,0.6); cursor: not-allowed; } @media (prefers-reduced-motion: reduce) { .ds-btn-secondary { transition: none; } }"
+    },
+    {
+      "name": "Tertiary Button (quiet)",
+      "kind": "button",
+      "refersTo": "button-tertiary",
+      "description": "Navigational or additive actions only: Agregar serie, Ver historial. The same rectangle at 60% so it cannot be mistaken for a write.",
+      "html": "<button class=\"ds-btn-tertiary\">Agregar serie</button>",
+      "css": ".ds-btn-tertiary { min-height: 44px; width: 100%; border: 2px solid #fff; border-radius: 4px; background: transparent; color: #fff; opacity: 0.6; font: 700 16px/20px ui-sans-serif, system-ui, -apple-system, sans-serif; transition: background-color 150ms, color 150ms; } .ds-btn-tertiary:hover { background: #fff; color: #050505; } .ds-btn-tertiary:focus-visible { outline: 2px solid #ff6aae; outline-offset: 2px; } @media (prefers-reduced-motion: reduce) { .ds-btn-tertiary { transition: none; } }"
+    },
+    {
+      "name": "Exercise Band",
+      "kind": "card",
+      "refersTo": "band-night",
+      "description": "The list unit: a 72 px full-bleed night band with the order label, a 56 px thumbnail, the name at 16/600, and the target numeral right-aligned.",
+      "html": "<a class=\"ds-band\" href=\"#\"><span class=\"ds-band-order\">03</span><span class=\"ds-band-thumb\" aria-hidden=\"true\"></span><span class=\"ds-band-name\">Press de banca con mancuernas</span><span class=\"ds-band-target\">4 &times; 10</span></a>",
+      "css": ".ds-band { display: flex; align-items: center; gap: 8px; min-height: 72px; padding: 8px 16px; background: #050505; color: #fff; text-decoration: none; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; transition: background-color 150ms; } .ds-band:hover { background: rgba(255,255,255,0.1); } .ds-band:focus-visible { outline: 2px solid #ff6aae; outline-offset: 2px; } .ds-band-order { flex: none; font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-variant-numeric: tabular-nums; opacity: 0.6; } .ds-band-thumb { flex: none; width: 56px; height: 56px; border-radius: 4px; background: #3a3a3a; opacity: 0.75; } .ds-band-name { flex: 1; min-width: 0; font-size: 16px; line-height: 20px; font-weight: 600; } .ds-band-target { flex: none; margin-left: auto; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; } @media (prefers-reduced-motion: reduce) { .ds-band { transition: none; } }"
+    },
+    {
+      "name": "Sunrise Row (dawn sweep)",
+      "kind": "custom",
+      "refersTo": "band-day",
+      "description": "The signature: a night band whose white half rises in 200 ms when it becomes saved. Toggle the --day class to see it. CSS only.",
+      "html": "<div class=\"ds-sweep ds-sweep-day\"><strong>Serie 1</strong><span class=\"ds-sweep-num\">22.5 kg &times; 10</span></div>",
+      "css": ".ds-sweep { --sweep-pos: 0 0; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 16px; border-top: 1px solid #3a3a3a; border-bottom: 1px solid #3a3a3a; background-color: #050505; background-image: linear-gradient(to top, #fff 50%, transparent 50%); background-size: 100% 200%; background-position: var(--sweep-pos); color: #fff; font: 400 16px/24px ui-sans-serif, system-ui, -apple-system, sans-serif; transition: background-position 200ms cubic-bezier(0.16,1,0.3,1), color 200ms cubic-bezier(0.16,1,0.3,1), border-color 200ms cubic-bezier(0.16,1,0.3,1); } .ds-sweep-day { --sweep-pos: 0 100%; color: #050505; } .ds-sweep-num { font-variant-numeric: tabular-nums; font-weight: 600; } @media (prefers-reduced-motion: reduce) { .ds-sweep { transition: none; } }"
+    },
+    {
+      "name": "Stepper",
+      "kind": "input",
+      "refersTo": "stepper-value",
+      "description": "One-handed numeric entry: two 44 px squares and a tappable 30 px tabular value between them, all drawn in currentColor so the control inverts with its band.",
+      "html": "<div class=\"ds-stepper\"><button class=\"ds-stepper-btn\" aria-label=\"Disminuir peso\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 11h14v2H5z\" fill=\"currentColor\"/></svg></button><button class=\"ds-stepper-value\">22.5<span class=\"ds-stepper-unit\"> kg</span></button><button class=\"ds-stepper-btn\" aria-label=\"Aumentar peso\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z\" fill=\"currentColor\"/></svg></button></div>",
+      "css": ".ds-stepper { display: flex; align-items: center; gap: 8px; width: 100%; color: #fff; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-stepper-btn { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; flex: none; border: 2px solid currentColor; border-radius: 4px; background: transparent; color: inherit; transition: opacity 150ms; } .ds-stepper-btn:hover { opacity: 0.8; } .ds-stepper-btn:focus-visible, .ds-stepper-value:focus-visible { outline: 2px solid #ff6aae; outline-offset: 2px; } .ds-stepper-btn:disabled { opacity: 0.4; cursor: not-allowed; } .ds-stepper-value { flex: 1; min-width: 96px; min-height: 44px; padding: 0 8px; border: 2px solid currentColor; border-radius: 4px; background: transparent; color: inherit; text-align: center; font-size: 30px; line-height: 36px; font-weight: 800; font-variant-numeric: tabular-nums; } .ds-stepper-unit { font-size: 16px; font-weight: 700; } @media (prefers-reduced-motion: reduce) { .ds-stepper-btn { transition: none; } }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-text",
+      "description": "Night field with a tracked label above; the border lights rose on focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Correo</span><input class=\"ds-field-input\" type=\"email\" value=\"mario@ejemplo.com\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 4px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-field-label { font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.9); } .ds-field-input { min-height: 44px; padding: 0 12px; border: 2px solid rgba(255,255,255,0.6); border-radius: 4px; background: #050505; color: #fff; font-size: 16px; caret-color: #ff6aae; outline: none; transition: border-color 150ms; } .ds-field-input:focus { border-color: #ff6aae; } @media (prefers-reduced-motion: reduce) { .ds-field-input { transition: none; } }"
+    },
+    {
+      "name": "Bottom Navigation",
+      "kind": "nav",
+      "refersTo": "nav-tab",
+      "description": "Two fixed 44 px tabs on black; the active one carries the 3 px horizon top edge.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Navegacion principal\"><a class=\"ds-nav-tab ds-nav-tab-active\" href=\"#\" aria-current=\"page\">Hoy</a><a class=\"ds-nav-tab\" href=\"#\">Dieta</a></nav>",
+      "css": ".ds-nav { display: flex; border-top: 1px solid #3a3a3a; background: #050505; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-nav-tab { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 0; color: rgba(255,255,255,0.6); font-size: 16px; font-weight: 700; text-decoration: none; transition: color 150ms; } .ds-nav-tab:hover { color: #fff; } .ds-nav-tab:focus-visible { outline: 2px solid #ff6aae; outline-offset: -2px; } .ds-nav-tab-active { color: #fff; } .ds-nav-tab-active::before { content: \"\"; position: absolute; inset-inline: 0; top: 0; height: 3px; background-image: linear-gradient(to right, #0a33ff, #ff6aae); } @media (prefers-reduced-motion: reduce) { .ds-nav-tab { transition: none; } }"
+    },
+    {
+      "name": "Horizon Day Band",
+      "kind": "custom",
+      "refersTo": "band-night",
+      "description": "The structural header of the Hoy screen: the single gradient, the tracked date line, the 22 px day title, and 44 px bordered arrows kept vertically centered so white never lands on pure rose.",
+      "html": "<section class=\"ds-horizon\"><button class=\"ds-horizon-arrow\" aria-label=\"Dia anterior\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M15 5l-7 7 7 7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"/></svg></button><div class=\"ds-horizon-text\"><p class=\"ds-horizon-kicker\">Hoy &middot; Lun 14 Sep</p><h2 class=\"ds-horizon-title\">Torso &mdash; empuje</h2></div><button class=\"ds-horizon-arrow\" aria-label=\"Dia siguiente\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5l7 7-7 7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"/></svg></button></section>",
+      "css": ".ds-horizon { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 96px; padding: 8px 16px; background-image: linear-gradient(to bottom, #0a33ff, #ff6aae); color: #fff; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-horizon-text { flex: 1; text-align: center; } .ds-horizon-kicker { margin: 0; font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-variant-numeric: tabular-nums; } .ds-horizon-title { margin: 4px 0 0; font-size: 22px; line-height: 28px; font-weight: 700; } .ds-horizon-arrow { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; flex: none; border: 2px solid #fff; border-radius: 4px; background: transparent; color: #fff; transition: background-color 150ms, color 150ms; } .ds-horizon-arrow:hover { background: #fff; color: #050505; } .ds-horizon-arrow:focus-visible { outline: 2px solid #ff6aae; outline-offset: 2px; } .ds-horizon-arrow:disabled { border-color: #3a3a3a; background: #3a3a3a; color: rgba(255,255,255,0.6); cursor: not-allowed; } @media (prefers-reduced-motion: reduce) { .ds-horizon-arrow { transition: none; } }"
+    },
+    {
+      "name": "Unit Toggle",
+      "kind": "chip",
+      "refersTo": "button-saved",
+      "description": "kg / lb per exercise. The selected side wears the day treatment (white with black ink); the other is a night secondary control.",
+      "html": "<div class=\"ds-toggle\" role=\"group\" aria-label=\"Unidad de peso\"><button class=\"ds-toggle-on\" aria-pressed=\"true\">kg</button><button class=\"ds-toggle-off\" aria-pressed=\"false\">lb</button></div>",
+      "css": ".ds-toggle { display: flex; gap: 4px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-toggle-on, .ds-toggle-off { min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 4px; border: 2px solid; font-size: 16px; font-weight: 700; } .ds-toggle-on { border-color: #050505; background: #fff; color: #050505; } .ds-toggle-off { border-color: #fff; background: transparent; color: #fff; transition: background-color 150ms, color 150ms; } .ds-toggle-off:hover { background: #fff; color: #050505; } .ds-toggle-on:focus-visible, .ds-toggle-off:focus-visible { outline: 2px solid #ff6aae; outline-offset: 2px; } @media (prefers-reduced-motion: reduce) { .ds-toggle-off { transition: none; } }"
+    },
+    {
+      "name": "Error Row (cue fault)",
+      "kind": "custom",
+      "refersTo": "band-error",
+      "description": "A failed write: a 2 px cue-fault frame plus an alert line in words. Entered values are never cleared and the color never travels alone.",
+      "html": "<div class=\"ds-error\" role=\"alert\"><strong>Serie 2</strong><p class=\"ds-error-msg\">No se pudo guardar. Revisa tu conexion.</p></div>",
+      "css": ".ds-error { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; border: 2px solid #e0342c; background: #050505; color: #fff; font: 400 16px/24px ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-error-msg { margin: 0; color: #e0342c; font-weight: 600; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Dawn Cyclorama",
+    "overview": "The app is a black theater cyclorama at night with a lit horizon on it. There is no depth, no glass, no card floating over anything: content is a stack of full-bleed horizontal bands on an absorbing matte black (#050505), and the only lit material in the world is a single vertical cobalt-to-rose gradient, the horizon. Light is the state machine. A band that has not happened is night; a band in progress carries a 3 px slice of horizon; a band that is done is full white day with black ink on it. Saving a set is literally a sunrise: the white half of a hard-stop gradient rises through the row in 200 ms.\n\nThe density is operational, not editorial. Mario reads this one-handed, between sets, with sweaty hands, under gym light that reflects off the screen, so numerals are the largest type on any screen, touch targets never go below 44 px, and every phase carries a word next to its color. High contrast is the aesthetic, not a concession to it: white on the black ground measures 20.4:1, and no text over the horizon falls below 4.5:1 because white is kept off the pure rose.\n\nConfirmed rejections, carried by the build: no webfont and no imported display face; no shadows, blur, or glass; no second gradient that reads as a gradient; no radius above 6 px; no dark-card-with-neon-accent list, which is the category look this redesign replaced.",
+    "keyCharacteristics": [
+      "Full-bleed horizontal bands on #050505, stacked, separated by 1 px blackout rules.",
+      "One gradient in the world: the cobalt-to-rose horizon, reserved for structure and the single primary action.",
+      "Three-phase vocabulary - night, dawn, day - mapped to real task state.",
+      "Flat by construction: zero shadows; depth is tonal (black / blackout / day-wash / day).",
+      "Numerals are the protagonists: tabular, 700-800, 22-30 px.",
+      "44 px minimum on every interactive box; 72 px as the list band unit.",
+      "CSS-only 200 ms dawn sweep; prefers-reduced-motion makes it a cut."
+    ],
+    "rules": [
+      { "name": "The One Horizon Rule", "body": "The cobalt-to-rose gradient is the only gradient in the world that reads as a gradient, and only one horizon is lit per screen: the day band, the active row's 3 px edge, and exactly one primary button. Two lit horizons on one screen is a bug. The hard-stop white/transparent gradient inside the dawn sweep is a position mask, not a visible gradient, and does not count against this rule; neither does the same two-color horizon laid horizontally, which is what a 3 px tall edge requires because a vertical ramp there would render as one flat color.", "section": "colors" },
+      { "name": "The Never-By-Color-Alone Rule", "body": "No state is signalled by color alone. Every phase carries a word, a shape, or both: Guardar serie to Guardando to Guardada, aria-pressed on the unit toggle, role=status / role=alert on async states, a 2 px cue-fault frame plus an alert line on error, line-through on a checked row.", "section": "colors" },
+      { "name": "The Day-Is-Earned Rule", "body": "Full white is reserved for what is saved and complete. Nothing decorative may be white-on-black at full luminance; exercise thumbnails from the catalog ship on white plates and are held at 75% opacity in night and dawn precisely so they cannot impersonate the day phase, returning to full light only when the band itself is day.", "section": "colors" },
+      { "name": "The Numeral-First Rule", "body": "In any row that carries a measurement, the numeral outranks its label in size and weight, and it is tabular. Weight, reps, sets, macros, dates, and counts all align in a column when stacked.", "section": "typography" },
+      { "name": "The One-Family Rule", "body": "No webfont and no second family may be added without an approved spec. New roles are cut from weight (400/600/700/800), size, and the 0.08em tracking, never from a new face.", "section": "typography" },
+      { "name": "The 44 Rule", "body": "Nothing tappable is under 44 px in either axis, in any state, including disabled. Sweaty hands and gloves are the design constraint, not an edge case.", "section": "layout" },
+      { "name": "The No-Shadow Rule", "body": "A cyclorama has no cast shadows. Separation comes from a 1 px blackout hairline, a 1 px black gap, or a change of phase, never from a drop shadow, a glow, or a blur.", "section": "elevation" },
+      { "name": "The Horizon-Edge Rule", "body": "The 3 px gradient edge means exactly one thing: this is the live one. Left edge for a row or band (the active set row, the most recent history session, an exercise with sets logged today, the open eating window). Top edge for the active bottom-nav tab. A saved or finished band never carries it.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do build new surfaces as full-bleed horizontal bands on #050505 inside the 448 px column, not as cards.",
+      "Do map every new state onto the existing phase vocabulary - night, dawn (3 px horizon edge), day, blackout, cue-fault - instead of inventing a new color.",
+      "Do keep exactly one lit horizon per screen: the structural band, the active edge, and one primary button.",
+      "Do give every state a word or a shape in addition to its color, and keep the status, alert, and pressed roles on async and toggle states.",
+      "Do make numerals tabular, 700-800, and larger than their labels (30 px/800 for entry values, 22 px/700 for the day title).",
+      "Do hold every interactive box at 44 px minimum in both axes, in every state including disabled, and keep opposing actions at opposite ends of their row.",
+      "Do express a completion as a 200 ms CSS-only sunrise and pair every transition with a reduced-motion escape.",
+      "Do keep corners at 4 px (6 px only on the media frame), 2 px borders for controls, 1 px blackout for structure."
+    ],
+    "donts": [
+      "Don't add a second visible gradient, a glow, a blur, glass, or any box-shadow; depth is tonal only.",
+      "Don't put white or small text on pure Rose Gather, and don't use the rose as a background for body copy.",
+      "Don't spend full white on anything that is not saved and complete; decorative or imported white imagery is held below full luminance until its band is day.",
+      "Don't signal a state by color alone, and don't express disabled with opacity alone on a primary action; use blackout fill, blackout border, and 60% text.",
+      "Don't import a webfont or a second family, and don't shrink 16 px body copy to make a layout fit; grow the band instead.",
+      "Don't let a navigational or additive action wear the primary horizon; it gets the 60% bordered tertiary rectangle.",
+      "Don't exceed a 6 px corner radius or introduce pill or circular shapes.",
+      "Don't add new controls whose icon is a typed text character, and don't add a decorative label above a heading; new iconography ships as inline SVG at 16-24 px, and the 12 px tracked label is for real labels, dates, and metadata."
+    ]
+  }
+}

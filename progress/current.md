@@ -1,15 +1,18 @@
 # Current session
 
 ## Feature in progress
-**Ninguna.** El lote de Dieta está cerrado: `09_diet_schema_and_rls`,
-`10_diet_screen`, `11_diet_checklists` y `12_diet_offline` están **`done`** en
-`feature_list.json` (12 cerrada el 2026-09-11 con reviewer **APPROVE**,
-0 bloqueantes, en `progress/review_12_diet_offline.md`; `./init.sh` verde en 5
-corridas completas entre implementer, reviewer y menores; 48 archivos / 732
-tests; resumen en `progress/history.md`).
+**Ninguna.** `14_ui_redesign_cyclorama` se cerró el **2026-09-12** como `done` en
+`feature_list.json`: reviewer del harness **APPROVE con 0 bloqueantes**
+(`progress/review_14_ui_redesign_cyclorama.md`) y finish-reviewer de Impeccable
+en **`ship`** (`.impeccable/critique/finish-review-14.md`). El resumen completo
+—mundo elegido, decisiones A–E, Enmienda 1, las dos rondas de fixes, 868/868
+tests, cobertura 98.8 %, CSS 1.116×, detector `[]` y los artefactos nuevos
+(`PRODUCT.md`, `DESIGN.md`, `.impeccable/design.json`, el contrato de dirección
+y el finish review)— vive en `progress/history.md`.
 
-La única feature abierta es **`13_fix_lb_prefill_validation` (`pending`)** y
-**espera una decisión del humano** (ver el bloque del bug más abajo).
+Con eso, el lote de Dieta (09–12) y el rediseño (14) están cerrados. La única
+feature abierta es **`13_fix_lb_prefill_validation` (`pending`)**, que **espera
+una decisión del humano** (ver el bloque del bug más abajo).
 
 ## State
 2026-09-11: `12_diet_offline` entregada. La sección Dieta funciona sin señal:
@@ -147,6 +150,34 @@ Registrado como `13_fix_lb_prefill_validation` (`pending`) en
    usuario anterior. Limpiarlas pertenece a 11 (su módulo `lib/checklist.ts`),
    fuera de la superficie que autorizaba el spec de 12. ¿Se abre una feature
    pequeña de higiene o se deja así?
+7. **Smoke manual en el iPhone del rediseño (`14_ui_redesign_cyclorama`).** Nada
+   de esto es automatizable; abrir la app **instalada** desde la pantalla de
+   inicio y comprobar: barra de estado y fondo **negros** (`#050505`, sin
+   destellos blancos al arrancar); la **banda de horizonte** legible bajo la luz
+   fuerte del gym, con el título del día como lo más grande de la primera
+   pantalla; **guardar una serie** y ver el **amanecer** de la fila; con
+   **"Reducir movimiento"** activo (Ajustes › Accesibilidad › Movimiento) el
+   cambio es un **corte**, no un barrido; flechas ‹ ›, −/+ y "Guardar serie"
+   alcanzables **con el pulgar** y sin fallar el toque; **Historial** en día
+   blanco (decisión A) y **Dieta** con las fases de la ventana de alimentación
+   (decisión B).
+8. **Defecto del helper de `e2e/diet-offline.spec.ts` (sin dueño, ajeno a 14).**
+   `readDietContent` localiza el nombre del plan con
+   `main.locator("p").first()`, pero **sin red el primer `<p>` de `<main>` es el
+   `OfflineBanner`** ("Sin conexión · plan guardado el …"), así que el test lee
+   el banner en vez del plan y falla. Arreglo sugerido: localizar el nombre por
+   la clase del kicker o por `main p:not([role])`. Junto a este, recordar que
+   **el timeout de `e2e/today.spec.ts` sigue abierto** (punto 5 de esta lista):
+   son los **dos** fallos E2E preexistentes que 14 no tocó ni empeoró
+   (`e2e/helpers.ts` quedó sin diff).
+9. **Decisión de versionado de las capturas del review de 14.** `.gitignore`
+   ignora `.impeccable/review/`, así que las **8 capturas** que sirvieron de
+   evidencia al finish review (8 221 – 223 258 B, incluida `desktop.png`)
+   existen en disco pero **no entrarían en el commit**: quien clone el repo no
+   verá la evidencia del cierre. Son **reproducibles** con
+   `CAPTURE=1 npx playwright test e2e/review-capture.spec.ts` (requiere
+   credenciales en vivo). El humano decide si se versionan —dejando de
+   ignorarlas— o se quedan fuera como artefacto local.
 
 ## Notes / blockers
 - **Sin bloqueos técnicos.** No hay ninguna feature `in_progress`: la siguiente

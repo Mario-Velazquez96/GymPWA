@@ -20,3 +20,12 @@ describe("ConfigError (R5)", () => {
     expect(screen.getByText(".env.local")).toBeInTheDocument();
   });
 });
+
+describe("ConfigError — 14 ciclorama (R27)", () => {
+  it("se pinta sobre el suelo nocturno y el código conserva font-mono", () => {
+    render(<ConfigError />);
+
+    expect(screen.getByRole("main")).toHaveClass("bg-cyc-black", "text-day");
+    expect(screen.getByText("VITE_SUPABASE_URL")).toHaveClass("font-mono");
+  });
+});

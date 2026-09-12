@@ -128,6 +128,22 @@
         "05_workout_logging",
         "08_weight_units"
       ]
+    },
+    {
+      "name": "14_ui_redesign_cyclorama",
+      "description": "Rediseno visual completo de la PWA (pedido del humano 2026-09-12: que se vea mejor y con paleta mas llamativa) con el skill Impeccable. Mundo elegido por el humano en la ronda de direccion: ciclorama de amanecer (negro #050505, horizonte cobalto #0A33FF a rosa #FF6AAE, dia blanco #FFFFFF); contrato de direccion en .impeccable/surfaces/src-screens-todayscreen-tsx.md y contexto de producto en PRODUCT.md. Alcance: las 5 pantallas (Login, Hoy, Ejercicio, Historial, Dieta), el app shell (AppHeader, BottomNav) y los 22 componentes, mas theme_color del manifest e index.html. Solo cambia presentacion (Tailwind v4 @theme en src/index.css + clases): cero cambios de datos, servicios, hooks, rutas, copy ni comportamiento; escribe unicamente en workout_logs como hoy. Debe conservar las clases estructurales que los tests afirman (min-h-11, fixed bottom-0, pb-24, line-through, aspect-square, grid-cols-4, overflow-x-auto, list-decimal, opacity-0/100) y todos los roles ARIA; los 732 tests deben seguir verdes sin reescribir asserts salvo el unico de color (ExerciseMedia bg-slate-800). Sin webfonts, canvas ni dependencias nuevas. Cierre: detector de Impeccable + impeccable-finish-reviewer + DESIGN.md via impeccable-documenter, ademas del reviewer del harness.",
+      "sdd": true,
+      "status": "done",
+      "depends_on": [
+        "03_today_view",
+        "04_exercise_detail",
+        "05_workout_logging",
+        "06_history",
+        "07_pwa_install_and_cache",
+        "10_diet_screen",
+        "11_diet_checklists",
+        "12_diet_offline"
+      ]
     }
   ]
 }

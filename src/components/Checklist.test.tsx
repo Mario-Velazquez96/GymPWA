@@ -189,3 +189,34 @@ describe("Checklist — lista vacía", () => {
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 });
+
+describe("Checklist — 14 ciclorama (R25)", () => {
+  it("el contador es un kicker y 'Desmarcar todo' un control secundario que se apaga", () => {
+    setup();
+
+    expect(screen.getByText("0 de 3 marcados")).toHaveClass("tracking-plot", "uppercase");
+    const clear = screen.getByRole("button", { name: "Desmarcar todo" });
+    expect(clear).toBeDisabled();
+    expect(clear).toHaveClass("min-h-11", "border-2", "border-day", "disabled:bg-blackout");
+    expect(clear).toHaveClass("disabled:text-day/60");
+  });
+
+  it("las categorías son kickers y la lista lleva costuras de apagón", () => {
+    setup({
+      groupByCategoria: true,
+      items: [
+        makeItem({ id: "a", categoria: "Proteína", item: "Pollo" }),
+        makeItem({ id: "b", categoria: "Verdura", item: "Brócoli" }),
+      ],
+    });
+
+    expect(screen.getByRole("heading", { level: 3, name: "Proteína" })).toHaveClass(
+      "tracking-plot",
+      "uppercase",
+      "text-day/60",
+    );
+    for (const list of screen.getAllByRole("list")) {
+      expect(list).toHaveClass("divide-y", "divide-blackout");
+    }
+  });
+});

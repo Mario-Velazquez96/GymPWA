@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
   DietChecklistItem,
@@ -667,5 +667,45 @@ describe("DietScreen — snapshot sin conexión (12 R12)", () => {
     render(<DietScreen />);
 
     expect(screen.queryByText(/Sin conexión/)).not.toBeInTheDocument();
+  });
+});
+
+describe("DietScreen — 14 ciclorama (R12, R20)", () => {
+  it("R20: <h1>Dieta</h1> como franja nocturna y el nombre del plan como kicker", () => {
+    mockState({ plan: makePlan() });
+
+    render(<DietScreen />);
+
+    const heading = screen.getByRole("heading", { level: 1, name: "Dieta" });
+    expect(heading).toHaveClass("text-2xl", "font-bold", "border-blackout");
+    expect(screen.getByText("Recomposición — Septiembre 2026")).toHaveClass(
+      "tracking-plot",
+      "uppercase",
+      "text-day/60",
+    );
+    expect(screen.getByRole("main")).toHaveClass("pb-24", "bg-cyc-black", "text-day");
+  });
+
+  it("R12: carga, error con Reintentar primario y vacío con el vocabulario único", () => {
+    mockState({ loading: true });
+    render(<DietScreen />);
+    expect(screen.getByRole("status")).toHaveClass("animate-pulse", "motion-reduce:animate-none");
+    cleanup();
+
+    mockState({ error: "No se pudo cargar la dieta" });
+    render(<DietScreen />);
+    expect(screen.getByRole("alert")).toHaveClass("text-cue-fault", "font-semibold");
+    expect(screen.getByRole("button", { name: "Reintentar" })).toHaveClass(
+      "bg-horizon",
+      "min-h-11",
+    );
+    cleanup();
+
+    mockState({ plan: null });
+    render(<DietScreen />);
+    expect(screen.getByText("Aún no tienes un plan de dieta asignado")).toHaveClass(
+      "text-day/90",
+      "text-center",
+    );
   });
 });

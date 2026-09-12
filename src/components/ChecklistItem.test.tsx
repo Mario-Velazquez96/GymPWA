@@ -96,3 +96,33 @@ describe("ChecklistItem (R2, R8, R16)", () => {
     expect(decor).toHaveTextContent("✓");
   });
 });
+
+describe("ChecklistItem — 14 ciclorama: cada renglón amanece (R25)", () => {
+  it("sin marcar: banda dawn-sweep en noche, caja de contorno heredado, label blanco", () => {
+    render(<ChecklistItem item={item} checked={false} onToggle={vi.fn()} />);
+
+    const box = screen.getByRole("checkbox");
+    const li = box.closest("li");
+    expect(li).toHaveClass("dawn-sweep");
+    expect(li).not.toHaveClass("dawn-sweep-day");
+    const decor = box.querySelector('[aria-hidden="true"]');
+    expect(decor).toHaveClass("size-6", "rounded-sm", "border-2", "border-current");
+    expect(decor).not.toHaveClass("bg-day");
+    const label = box.querySelectorAll("span");
+    expect(label[label.length - 1]).toHaveClass("text-day/90");
+    expect(label[label.length - 1]).not.toHaveClass("line-through");
+  });
+
+  it("marcado: la banda amanece (dawn-sweep-day), la caja es de día y el ÚLTIMO span va tachado", () => {
+    render(<ChecklistItem item={item} checked onToggle={vi.fn()} />);
+
+    const box = screen.getByRole("checkbox");
+    expect(box.closest("li")).toHaveClass("dawn-sweep", "dawn-sweep-day");
+    expect(box.querySelector('[aria-hidden="true"]')).toHaveClass("bg-day", "text-cyc-black");
+    const spans = box.querySelectorAll("span");
+    const last = spans[spans.length - 1];
+    expect(last).toHaveTextContent("Pechuga de pollo · 1.6 kg");
+    expect(last).toHaveClass("line-through");
+    expect(box).toHaveClass("min-h-11", "w-full");
+  });
+});

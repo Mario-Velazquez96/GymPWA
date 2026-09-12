@@ -23,7 +23,9 @@ describe("ExerciseMedia (R2)", () => {
     const gif = screen.getByAltText("Demostración de Press de banca");
     expect(gif).toHaveAttribute("src", props.gifUrl);
 
-    const thumb = screen.getByTestId("exercise-media").querySelector(`img[src="${props.imageUrl}"]`);
+    const thumb = screen
+      .getByTestId("exercise-media")
+      .querySelector(`img[src="${props.imageUrl}"]`);
     expect(thumb).not.toBeNull();
   });
 
@@ -59,6 +61,6 @@ describe("ExerciseMedia (R2)", () => {
 
     expect(box.querySelector("img")).toBeNull();
     expect(box).toBeInTheDocument();
-    expect(box).toHaveClass("bg-slate-800");
+    expect(box).toHaveClass("bg-blackout");
   });
 });

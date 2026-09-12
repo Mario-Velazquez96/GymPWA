@@ -130,3 +130,52 @@ describe("EatingWindow — presentacional (R8)", () => {
     intlSpy.mockRestore();
   });
 });
+
+describe("EatingWindow — 14 ciclorama: fases literales (R22, decisión B)", () => {
+  function section(): HTMLElement {
+    const heading = screen.getByRole("heading", { level: 2 });
+    const node = heading.closest("section");
+    if (node === null) {
+      throw new Error("EatingWindow no renderizó un <section>");
+    }
+    return node;
+  }
+
+  it("antes → noche (borde de día) con el texto intacto", () => {
+    renderWindow({ kind: "antes", opensAt: "10:00", minutesToNext: 60, nextMeal: makeMeal() });
+
+    expect(section()).toHaveAttribute("data-phase", "night");
+    expect(section()).toHaveClass("border-2", "border-day", "bg-cyc-black");
+    expect(section()).not.toHaveClass("dawn-sweep-day");
+    expect(
+      screen.getByText("Fuera de la ventana · faltan 60 min para Desayuno fuerte (10:00)"),
+    ).toBeInTheDocument();
+  });
+
+  it("dentro → día blanco con filo de horizonte", () => {
+    renderWindow({ kind: "dentro", closesAt: "18:00", nextMeal: null });
+
+    expect(section()).toHaveAttribute("data-phase", "day");
+    expect(section()).toHaveClass("dawn-sweep", "dawn-sweep-day", "horizon-edge-l");
+    expect(
+      screen.getByText("Dentro de la ventana · no quedan comidas hoy; cierra a las 18:00"),
+    ).toBeInTheDocument();
+  });
+
+  it("después → apagón", () => {
+    renderWindow({ kind: "despues", opensAt: "10:00", nextMeal: null });
+
+    expect(section()).toHaveAttribute("data-phase", "blackout");
+    expect(section()).toHaveClass("bg-blackout", "text-day/90");
+    expect(section()).not.toHaveClass("dawn-sweep-day");
+    expect(screen.getByText("Ventana cerrada · abre mañana a las 10:00")).toBeInTheDocument();
+  });
+
+  it("sin ventana → none (costura de apagón, texto atenuado)", () => {
+    renderWindow({ kind: "sin_ventana" }, { ventana_inicio: null, ventana_fin: null });
+
+    expect(section()).toHaveAttribute("data-phase", "none");
+    expect(section()).toHaveClass("border-blackout", "text-day/60");
+    expect(section()).not.toHaveClass("dawn-sweep-day");
+  });
+});

@@ -56,3 +56,18 @@ describe("MacroSummary (R6)", () => {
     expect(textsOf(macroList(container), "dd")).toEqual(["0 kcal", "0 g", "0 g", "0 g"]);
   });
 });
+
+describe("MacroSummary — 14 ciclorama (R21)", () => {
+  it("casillas nocturnas separadas por 1 px, etiqueta en kicker y numeral tabular grande", () => {
+    const { container } = render(<MacroSummary plan={plan} />);
+
+    const list = macroList(container);
+    expect(list).toHaveClass("grid-cols-4", "gap-px");
+    const tile = list.querySelector("div");
+    expect(tile).toHaveClass("bg-cyc-black", "border-blackout");
+    expect(list.querySelector("dt")).toHaveClass("tracking-plot", "uppercase", "text-day/60");
+    const value = list.querySelector("dd span");
+    expect(value).toHaveTextContent("2000");
+    expect(value).toHaveClass("text-2xl", "font-extrabold", "tabular-nums", "text-day");
+  });
+});

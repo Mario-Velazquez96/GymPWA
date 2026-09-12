@@ -102,3 +102,25 @@ describe("BottomNav — navegación (R3)", () => {
     expect(activeLabel()).toBe("Hoy");
   });
 });
+
+describe("BottomNav — 14 ciclorama (R8)", () => {
+  it("solo la pestaña activa lleva el filo de horizonte y la tinta de día", () => {
+    renderNav("/dieta");
+
+    const nav = screen.getByRole("navigation", { name: "Navegación principal" });
+    const hoy = within(nav).getByRole("link", { name: "Hoy" });
+    const dieta = within(nav).getByRole("link", { name: "Dieta" });
+    expect(dieta).toHaveClass("horizon-edge-t", "text-day");
+    expect(dieta).toHaveAttribute("aria-current", "page");
+    expect(hoy).not.toHaveClass("horizon-edge-t");
+    expect(hoy).toHaveClass("text-day/60");
+    expect(hoy).not.toHaveAttribute("aria-current");
+  });
+
+  it("la barra es negra con costura de apagón y conserva su posición fija", () => {
+    renderNav("/");
+
+    const nav = screen.getByRole("navigation", { name: "Navegación principal" });
+    expect(nav).toHaveClass("bg-cyc-black", "border-blackout", "fixed", "bottom-0");
+  });
+});

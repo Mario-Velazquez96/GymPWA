@@ -11,13 +11,14 @@ interface OfflineBannerProps {
  * consulta nada y no ofrece botón — al volver la señal el plan se actualiza
  * solo (evento `online` o al reabrir Dieta).
  *
- * `role="status"` (= `aria-live="polite"`) lo anuncia sin robar el foco.
+ * `role="status"` (= `aria-live="polite"`) lo anuncia sin robar el foco. Va
+ * como banda de apagón (14 R20): la app está a media luz, no rota.
  */
 export default function OfflineBanner({ savedAt }: OfflineBannerProps) {
   const fecha = formatSavedAt(savedAt);
 
   return (
-    <p role="status" className="rounded-md bg-slate-800 px-3 py-2 text-sm text-slate-300">
+    <p role="status" className="bg-blackout px-4 py-2 text-sm text-day/90">
       {fecha === null
         ? "Sin conexión · plan guardado en este dispositivo"
         : `Sin conexión · plan guardado el ${fecha}`}

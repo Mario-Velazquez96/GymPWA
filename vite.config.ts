@@ -20,8 +20,8 @@ export default defineConfig({
         lang: "es",
         display: "standalone",
         start_url: "/",
-        theme_color: "#0f172a",
-        background_color: "#0f172a",
+        theme_color: "#050505",
+        background_color: "#050505",
         // R1: mancuerna blanca sobre fondo azul muy oscuro, generada por
         // scripts/generate-icons.mjs desde public/icon.svg.
         icons: [
@@ -56,8 +56,7 @@ export default defineConfig({
             // ejercicios) se cachea con CacheFirst. Las rutas de API
             // (/rest/, /auth/) no coinciden con ninguna regla → siempre red (R5).
             urlPattern: ({ url }: { url: URL }) =>
-              url.hostname.endsWith(".supabase.co") &&
-              url.pathname.startsWith("/storage/"),
+              url.hostname.endsWith(".supabase.co") && url.pathname.startsWith("/storage/"),
             handler: "CacheFirst",
             options: {
               cacheName: "exercise-media",

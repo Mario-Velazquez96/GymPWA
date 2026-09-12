@@ -100,3 +100,44 @@ describe("LoginScreen (R2, R3, R7)", () => {
     expect(screen.getByRole("button", { name: "Entrando…" })).toBeDisabled();
   });
 });
+
+describe("LoginScreen — 14 ciclorama (R26)", () => {
+  it("suelo nocturno, labels en kicker e inputs como rectángulos con borde de día", () => {
+    render(<LoginScreen />);
+
+    expect(screen.getByRole("main")).toHaveClass("bg-cyc-black", "text-day");
+    expect(screen.getByRole("heading", { name: "Iniciar sesión" })).toHaveClass(
+      "text-2xl",
+      "font-bold",
+    );
+    expect(screen.getByText("Correo")).toHaveClass("tracking-plot", "uppercase", "font-bold");
+    for (const input of [screen.getByLabelText("Correo"), screen.getByLabelText("Contraseña")]) {
+      expect(input).toHaveClass("border-2", "border-day/60", "rounded-sm", "min-h-11");
+      expect(input).toHaveClass("focus:border-horizon-rose", "bg-cyc-black");
+    }
+  });
+
+  it("'Entrar' es la acción primaria de horizonte y se apaga mientras entra", async () => {
+    mocks.signIn.mockImplementation(() => new Promise(() => undefined));
+    render(<LoginScreen />);
+
+    const button = screen.getByRole("button", { name: "Entrar" });
+    expect(button).toHaveClass("bg-horizon", "font-bold", "min-h-11", "rounded-sm");
+    expect(button).toHaveClass("disabled:bg-blackout", "disabled:bg-none", "disabled:text-day/60");
+
+    await fillAndSubmit("mario@ejemplo.com", "secreta");
+
+    expect(screen.getByRole("button", { name: "Entrando…" })).toBeDisabled();
+  });
+
+  it("el error va en rojo de cue, en texto y con peso", async () => {
+    mocks.signIn.mockResolvedValue({ error: "Correo o contraseña incorrectos" });
+    render(<LoginScreen />);
+
+    await fillAndSubmit("mario@ejemplo.com", "mala");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Correo o contraseña incorrectos");
+    expect(alert).toHaveClass("text-cue-fault", "font-semibold", "text-base");
+  });
+});

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { Exercise, WorkoutLog } from "@/lib/types";
@@ -249,5 +249,61 @@ describe("HistoryScreen — espacio para la barra inferior (10 R3)", () => {
 
     await screen.findByRole("heading", { name: "Press de banca", level: 1 });
     expect(screen.getByRole("main")).toHaveClass("pb-24");
+  });
+});
+
+describe("HistoryScreen — 14 ciclorama (R12, R13, R19)", () => {
+  it("R19: solo la sesión más reciente (primera) lleva latest; el resto va en day-wash", async () => {
+    mockGetExercise.mockResolvedValue({ data: makeExercise(), error: null });
+    mockGetHistory.mockResolvedValue({
+      data: [
+        makeLog({ id: "n1", performed_at: "2026-08-05", set_number: 1 }),
+        makeLog({ id: "o1", performed_at: "2026-08-01", set_number: 1, weight_kg: 20 }),
+      ],
+      error: null,
+    });
+
+    renderScreen();
+
+    const articles = await screen.findAllByRole("article");
+    expect(articles).toHaveLength(2);
+    expect(articles[0]).toHaveAttribute("data-latest", "true");
+    expect(articles[0]).toHaveClass("bg-day", "horizon-edge-l");
+    expect(articles[1]).toHaveAttribute("data-latest", "false");
+    expect(articles[1]).toHaveClass("bg-day-wash");
+    expect(articles[0]?.parentElement).toHaveClass("gap-px");
+    expect(screen.getByRole("main")).toHaveClass("pb-24", "bg-cyc-black");
+  });
+
+  it("R13: header nocturno con back secundario de 44 px y título a 24 px", async () => {
+    mockGetExercise.mockResolvedValue({ data: makeExercise(), error: null });
+    mockGetHistory.mockResolvedValue({ data: [], error: null });
+
+    renderScreen();
+
+    const back = await screen.findByRole("link", { name: "Volver" });
+    expect(back).toHaveClass("border-2", "border-day", "min-h-11", "min-w-11");
+    expect(back.closest("header")).toHaveClass("border-blackout");
+    expect(await screen.findByRole("heading", { level: 1, name: "Press de banca" })).toHaveClass(
+      "text-2xl",
+    );
+    expect(screen.getByText("Aún no hay registros de este ejercicio")).toHaveClass("text-day/90");
+  });
+
+  it("R12: carga y error con el vocabulario único", async () => {
+    mockGetExercise.mockReturnValueOnce(new Promise(() => undefined));
+    mockGetHistory.mockReturnValueOnce(new Promise(() => undefined));
+    renderScreen();
+    expect(screen.getByRole("status")).toHaveClass("animate-pulse", "motion-reduce:animate-none");
+    cleanup();
+
+    mockGetExercise.mockResolvedValueOnce({ data: null, error: "No se pudo cargar el ejercicio" });
+    mockGetHistory.mockResolvedValueOnce({ data: [], error: null });
+    renderScreen();
+    expect(await screen.findByRole("alert")).toHaveClass("text-cue-fault", "font-semibold");
+    expect(screen.getByRole("button", { name: "Reintentar" })).toHaveClass(
+      "bg-horizon",
+      "min-h-11",
+    );
   });
 });

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import SetRow from "@/components/SetRow";
 import type { SetRowState } from "@/lib/logging";
@@ -229,5 +229,193 @@ describe("SetRow — unidad activa (08 R4, R5, R6, R10)", () => {
 
     expect(screen.getByRole("button", { name: "✓ Guardada" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Peso serie 1" })).toHaveTextContent("45 lb");
+  });
+});
+
+describe("SetRow — 14 ciclorama: fases visuales (R16, R17)", () => {
+  function li(): HTMLElement {
+    return screen.getByRole("listitem");
+  }
+
+  function renderActive(row: SetRowState): void {
+    render(
+      <ul>
+        <SetRow
+          row={row}
+          previous={null}
+          active
+          onWeightChange={onWeightChange}
+          onRepsChange={onRepsChange}
+          onSave={onSave}
+        />
+      </ul>,
+    );
+  }
+
+  it("editable activa: banda de noche con data-status, botón primario de horizonte", () => {
+    renderActive(makeRow({ status: "editable" }));
+
+    expect(li()).toHaveAttribute("data-status", "editable");
+    expect(li()).toHaveClass("dawn-sweep", "border-blackout", "flex", "flex-col", "gap-3");
+    expect(li()).not.toHaveClass("dawn-sweep-day");
+    expect(li()).not.toHaveClass("border-cue-fault");
+    expect(screen.getByRole("button", { name: "Guardar serie" })).toHaveClass(
+      "bg-horizon",
+      "text-day",
+      "w-full",
+    );
+  });
+
+  it("saving: sigue en noche y el botón 'Guardando…' va en apagón legible", () => {
+    renderRow(makeRow({ status: "saving" }));
+
+    expect(li()).toHaveAttribute("data-status", "saving");
+    expect(li()).not.toHaveClass("dawn-sweep-day");
+    const button = screen.getByRole("button", { name: "Guardando…" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveClass("bg-blackout", "text-day/90");
+  });
+
+  it("saved: la fila amanece (dawn-sweep-day) y '✓ Guardada' es día/seleccionado", () => {
+    renderRow(makeRow({ status: "saved" }), previousLog);
+
+    expect(li()).toHaveAttribute("data-status", "saved");
+    expect(li()).toHaveClass("dawn-sweep", "dawn-sweep-day");
+    const button = screen.getByRole("button", { name: "✓ Guardada" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveClass("bg-day", "text-cyc-black", "border-2", "border-cyc-black");
+    // "Anterior" hereda la tinta de día (sin text-day/90) y sigue siendo un solo nodo.
+    const previous = screen.getByText("Anterior: 22.5 kg × 10");
+    expect(previous).not.toHaveClass("text-day/90");
+    expect(previous).toHaveClass("tabular-nums");
+  });
+
+  it("error activa: marco de cue-fault, mensaje en texto y botón primario habilitado", () => {
+    renderActive(makeRow({ status: "error", message: "No se pudo guardar la serie, reintenta" }));
+
+    expect(li()).toHaveAttribute("data-status", "error");
+    expect(li()).toHaveClass("border-2", "border-cue-fault");
+    expect(li()).not.toHaveClass("dawn-sweep-day");
+    expect(screen.getByRole("alert")).toHaveClass("text-cue-fault", "font-semibold", "text-base");
+    expect(screen.getByRole("button", { name: "Guardar serie" })).toHaveClass("bg-horizon");
+  });
+
+  it("active: filo de horizonte en editable y error, nunca en saved", () => {
+    renderActive(makeRow({ status: "editable" }));
+    expect(li()).toHaveClass("horizon-edge-l");
+    expect(li()).toHaveAttribute("data-active", "true");
+    cleanup();
+
+    renderActive(makeRow({ status: "error", message: "No se pudo guardar la serie, reintenta" }));
+    expect(li()).toHaveClass("horizon-edge-l", "border-cue-fault");
+    cleanup();
+
+    renderActive(makeRow({ status: "saved" }));
+    expect(li()).not.toHaveClass("horizon-edge-l");
+    expect(li()).toHaveAttribute("data-active", "true");
+  });
+
+  it("sin active: data-active=false y sin filo", () => {
+    renderRow(makeRow({ status: "editable" }));
+
+    expect(li()).toHaveAttribute("data-active", "false");
+    expect(li()).not.toHaveClass("horizon-edge-l");
+  });
+
+  it("'Anterior' en noche va en text-day/90 y tabular, como primera línea de la fila", () => {
+    renderRow(makeRow(), previousLog);
+
+    const previous = screen.getByText("Anterior: 22.5 kg × 10");
+    expect(previous).toHaveClass("text-day/90", "tabular-nums", "text-base");
+    const heading = screen.getByRole("heading", { name: "Serie 1" });
+    expect(heading).toHaveClass("font-bold");
+    const steppers = screen.getByRole("button", { name: "Disminuir Peso serie 1" });
+    expect(
+      previous.compareDocumentPosition(steppers) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+});
+
+describe("SetRow — correcciones de la revisión de cierre (finish-review-14)", () => {
+  function li(): HTMLElement {
+    return screen.getByRole("listitem");
+  }
+
+  function renderActive(row: SetRowState): void {
+    render(
+      <ul>
+        <SetRow
+          row={row}
+          previous={null}
+          active
+          onWeightChange={onWeightChange}
+          onRepsChange={onRepsChange}
+          onSave={onSave}
+        />
+      </ul>,
+    );
+  }
+
+  it("fix 2: solo la fila activa lleva el horizonte; la pendiente va en secundario", () => {
+    renderActive(makeRow({ status: "editable" }));
+    const active = screen.getByRole("button", { name: "Guardar serie" });
+    expect(active).toHaveClass("bg-horizon", "text-day");
+    expect(active).not.toHaveClass("border-2");
+    cleanup();
+
+    renderRow(makeRow({ status: "editable" }));
+    const pending = screen.getByRole("button", { name: "Guardar serie" });
+    expect(pending).toHaveClass("border-2", "border-day", "bg-transparent", "text-day", "w-full");
+    expect(pending).not.toHaveClass("bg-horizon");
+  });
+
+  it("fix 2: la fila pendiente conserva texto, target, estado habilitado y guardado", async () => {
+    const user = userEvent.setup();
+    renderRow(makeRow({ status: "editable" }));
+
+    const button = screen.getByRole("button", { name: "Guardar serie" });
+    expect(button).toBeEnabled();
+    expect(button).toHaveClass("min-h-11");
+    expect(li()).toHaveAttribute("data-active", "false");
+    await user.click(button);
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("fix 2: el error no activo también va en secundario, con su marco y su alerta", () => {
+    renderRow(makeRow({ status: "error", message: "No se pudo guardar la serie, reintenta" }));
+
+    expect(li()).toHaveClass("border-cue-fault");
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudo guardar la serie, reintenta");
+    const button = screen.getByRole("button", { name: "Guardar serie" });
+    expect(button).toHaveClass("border-2", "border-day");
+    expect(button).not.toHaveClass("bg-horizon");
+    expect(button).toBeEnabled();
+  });
+
+  it("fix 2: saving y saved no cambian de tratamiento por no ser la fila activa", () => {
+    renderRow(makeRow({ status: "saving" }));
+    const saving = screen.getByRole("button", { name: "Guardando…" });
+    expect(saving).toHaveClass("bg-blackout", "text-day/90");
+    expect(saving).toBeDisabled();
+    cleanup();
+
+    renderRow(makeRow({ status: "saved" }));
+    const saved = screen.getByRole("button", { name: "✓ Guardada" });
+    expect(saved).toHaveClass("bg-day", "text-cyc-black");
+    expect(saved).toBeDisabled();
+  });
+
+  it("fix 6: el botón pulsado sube un paso de fase a dawn-rose, sin desvanecido", () => {
+    renderActive(makeRow({ status: "editable" }));
+
+    const button = screen.getByRole("button", { name: "Guardar serie" });
+    expect(button).toHaveClass(
+      "active:bg-none",
+      "active:bg-dawn-rose",
+      "active:text-cyc-black",
+      "motion-reduce:transition-none",
+    );
+    expect(button).not.toHaveClass("hover:opacity-90");
+    expect(button).not.toHaveClass("transition-opacity");
   });
 });

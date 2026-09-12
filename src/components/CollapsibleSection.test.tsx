@@ -61,3 +61,20 @@ describe("CollapsibleSection (R14)", () => {
     expect(screen.getByTestId("hijo")).toBeInTheDocument();
   });
 });
+
+describe("CollapsibleSection — 14 ciclorama (R24)", () => {
+  it("es una banda nocturna y el chevron gira 90° en 150 ms con corte en reduced-motion", () => {
+    const details = renderSection();
+
+    expect(details).toHaveClass("border-y", "border-blackout", "bg-cyc-black");
+    expect(details.querySelector("summary")).toHaveClass("min-h-11", "font-bold", "text-day");
+    const chevron = details.querySelector('[aria-hidden="true"]');
+    expect(chevron).toHaveClass(
+      "transition-transform",
+      "duration-150",
+      "motion-reduce:transition-none",
+      "group-open:rotate-90",
+      "text-day/60",
+    );
+  });
+});

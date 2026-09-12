@@ -93,3 +93,24 @@ describe("MealCard (R12)", () => {
     expect(screen.getByRole("article").querySelectorAll("p")).toHaveLength(1);
   });
 });
+
+describe("MealCard — 14 ciclorama (R23)", () => {
+  it("banda nocturna con costura, título en negrita blanca y viñetas rosas", () => {
+    render(<MealCard meal={makeMeal()} />);
+
+    const article = screen.getByRole("article");
+    expect(article).toHaveClass("border-b", "border-blackout");
+    expect(article.className).not.toMatch(/rounded|bg-/);
+    expect(screen.getByRole("heading", { level: 3 })).toHaveClass(
+      "text-lg",
+      "font-bold",
+      "text-day",
+    );
+    expect(screen.getByText("1050 kcal · 85 g proteína")).toHaveClass("text-day/60");
+    expect(screen.getByRole("list")).toHaveClass(
+      "list-disc",
+      "marker:text-dawn-rose",
+      "text-day/90",
+    );
+  });
+});

@@ -160,3 +160,40 @@ describe("Stepper — entrada numérica directa (R4)", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+describe("Stepper — 14 ciclorama (R18)", () => {
+  it("−/+ son cuadros de contorno heredado y el valor un numeral tabular de 30 px", () => {
+    renderStepper();
+
+    const minus = screen.getByRole("button", { name: "Disminuir Peso serie 1" });
+    const plus = screen.getByRole("button", { name: "Aumentar Peso serie 1" });
+    const center = screen.getByRole("button", { name: "Peso serie 1" });
+    for (const button of [minus, plus]) {
+      expect(button).toHaveClass("border-2", "border-current", "rounded-sm", "text-xl");
+      expect(button).toHaveClass("disabled:opacity-40");
+    }
+    expect(center).toHaveClass("min-w-24", "text-3xl", "font-extrabold", "tabular-nums");
+    expect(center).toHaveClass("border-current");
+  });
+
+  it("deshabilitado, el valor NO se atenúa (el número es el registro) pero −/+ sí", () => {
+    renderStepper({ disabled: true });
+
+    const center = screen.getByRole("button", { name: "Peso serie 1" });
+    expect(center).toBeDisabled();
+    expect(center).not.toHaveClass("disabled:opacity-40");
+    expect(center).not.toHaveClass("disabled:opacity-60");
+    expect(screen.getByRole("button", { name: "Aumentar Peso serie 1" })).toHaveClass(
+      "disabled:opacity-40",
+    );
+  });
+
+  it("el input de borrador conserva el cuadro y se enmarca en rosa de horizonte", async () => {
+    renderStepper();
+
+    await userEvent.click(screen.getByRole("button", { name: "Peso serie 1" }));
+    const input = screen.getByRole("textbox", { name: "Peso serie 1" });
+    expect(input).toHaveClass("border-2", "border-horizon-rose", "min-h-11", "text-3xl");
+    expect(input).toHaveClass("tabular-nums", "bg-transparent");
+  });
+});

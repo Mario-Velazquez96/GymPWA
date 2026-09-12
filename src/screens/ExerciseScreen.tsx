@@ -13,13 +13,33 @@ interface LoadedResult {
   detail: PlanExerciseDetail | null;
 }
 
+/** Acción primaria: horizonte con texto blanco (Reintentar, Volver a Hoy). */
+const PRIMARY_CLASS =
+  "inline-flex min-h-11 items-center justify-center rounded-sm bg-horizon px-6 text-base font-bold text-day transition-colors duration-150 active:bg-none active:bg-dawn-rose active:text-cyc-black motion-reduce:transition-none";
+
+/** Control secundario de noche: borde de día, sin relleno. */
+const SECONDARY_CLASS =
+  "inline-flex min-h-11 items-center justify-center rounded-sm border-2 border-day bg-transparent text-base font-bold text-day transition-colors duration-150 hover:bg-day hover:text-cyc-black motion-reduce:transition-none";
+
+/**
+ * Control terciario: misma caja de 44 px y mismo borde de día que el
+ * secundario, al 60 %. Lo llevan las acciones que solo navegan o añaden
+ * ("Ver historial", "Agregar serie") para que no se confundan con el
+ * "Guardar serie" de una fila pendiente, que sí escribe (regresión R1 de la
+ * revisión de cierre). El primario —horizonte— sigue siendo de la fila activa.
+ */
+const TERTIARY_CLASS = `${SECONDARY_CLASS} opacity-60`;
+
 /** Metas del plan: "4 × 8-12" + "Descanso: N s" cuando hay descanso (R4). */
 function TargetBadge({ detail }: { detail: PlanExerciseDetail }) {
   return (
-    <p className="text-center text-lg font-semibold text-slate-100">
+    <p className="text-center text-3xl font-extrabold text-day tabular-nums">
       {detail.target_sets} × {detail.target_reps}
       {detail.rest_seconds !== null && (
-        <span className="font-normal text-slate-300"> · Descanso: {detail.rest_seconds} s</span>
+        <span className="text-lg font-normal text-day/60">
+          {" "}
+          · Descanso: {detail.rest_seconds} s
+        </span>
       )}
     </p>
   );
@@ -28,12 +48,12 @@ function TargetBadge({ detail }: { detail: PlanExerciseDetail }) {
 /** Atribución obligatoria de la media de ejercicios (R6). */
 function Attribution() {
   return (
-    <p className="text-center text-xs text-slate-500">
+    <p className="text-center text-xs text-day/60">
       <a
         href="https://gymvisual.com/"
         target="_blank"
         rel="noreferrer"
-        className="inline-flex min-h-11 items-center underline underline-offset-2 transition-colors hover:text-slate-300"
+        className="inline-flex min-h-11 items-center underline underline-offset-4 transition-colors duration-150 hover:text-day motion-reduce:transition-none"
       >
         © Gym visual — https://gymvisual.com/
       </a>
@@ -81,7 +101,10 @@ export default function ExerciseScreen() {
   function renderBody(): ReactElement {
     if (loaded === null) {
       return (
-        <p role="status" className="animate-pulse py-10 text-center text-lg text-slate-300">
+        <p
+          role="status"
+          className="animate-pulse py-10 text-center text-lg text-day/60 motion-reduce:animate-none"
+        >
           Cargando ejercicio…
         </p>
       );
@@ -89,15 +112,11 @@ export default function ExerciseScreen() {
 
     if (loaded.error !== null) {
       return (
-        <div className="flex flex-col items-center gap-4 py-10">
-          <p role="alert" className="text-center text-lg text-red-400">
+        <div className="flex flex-col items-center gap-4 px-4 py-10">
+          <p role="alert" className="text-center text-base font-semibold text-cue-fault">
             {loaded.error}
           </p>
-          <button
-            type="button"
-            onClick={retry}
-            className="min-h-11 rounded-lg bg-sky-600 px-6 text-base font-semibold text-white transition-colors hover:bg-sky-500"
-          >
+          <button type="button" onClick={retry} className={PRIMARY_CLASS}>
             Reintentar
           </button>
         </div>
@@ -106,12 +125,9 @@ export default function ExerciseScreen() {
 
     if (detail === null) {
       return (
-        <div className="flex flex-col items-center gap-4 py-10">
-          <p className="text-center text-lg text-slate-300">Ejercicio no encontrado</p>
-          <Link
-            to="/"
-            className="inline-flex min-h-11 items-center rounded-lg bg-sky-600 px-6 text-base font-semibold text-white transition-colors hover:bg-sky-500"
-          >
+        <div className="flex flex-col items-center gap-4 px-4 py-10">
+          <p className="text-center text-lg text-day/90">Ejercicio no encontrado</p>
+          <Link to="/" className={PRIMARY_CLASS}>
             Volver a Hoy
           </Link>
         </div>
@@ -121,7 +137,7 @@ export default function ExerciseScreen() {
     const exercise = detail.exercises;
 
     return (
-      <article className="flex flex-col gap-4">
+      <article className="flex flex-col gap-4 px-4 pt-4">
         <ExerciseMedia
           name={exercise.name}
           imageUrl={exercise.image_url}
@@ -131,31 +147,28 @@ export default function ExerciseScreen() {
         <TargetBadge detail={detail} />
 
         <div className="flex flex-wrap justify-center gap-2">
-          <span className="rounded-full bg-slate-800 px-3 py-1.5 text-sm text-slate-300">
+          <span className="rounded-sm border border-day/40 px-3 py-1.5 text-sm text-day/90">
             {exercise.equipment}
           </span>
-          <span className="rounded-full bg-slate-800 px-3 py-1.5 text-sm text-slate-300">
+          <span className="rounded-sm border border-day/40 px-3 py-1.5 text-sm text-day/90">
             {exercise.target}
           </span>
         </div>
 
         {detail.notes !== null && (
-          <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-base text-amber-200">
+          <p className="rounded-sm border-2 border-dawn-rose bg-cyc-black p-3 text-base text-day/90">
             {detail.notes}
           </p>
         )}
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-semibold text-slate-100">Instrucciones</h2>
+          <h2 className="text-lg font-bold text-day">Instrucciones</h2>
           <InstructionSteps steps={exercise.instruction_steps_es} />
         </section>
 
         <LoggingSection planExercise={detail} />
 
-        <Link
-          to={`/historial/${exercise.id}`}
-          className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-700 bg-slate-800 px-6 text-base font-semibold text-slate-100 transition-colors hover:bg-slate-700"
-        >
+        <Link to={`/historial/${exercise.id}`} className={`${TERTIARY_CLASS} w-full px-6`}>
           Ver historial
         </Link>
 
@@ -165,16 +178,14 @@ export default function ExerciseScreen() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 bg-slate-900 p-4 pb-24 text-slate-100">
-      <header className="flex items-center gap-3">
-        <Link
-          to="/"
-          aria-label="Volver"
-          className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-xl font-bold text-slate-100 transition-colors hover:bg-slate-700"
-        >
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-cyc-black pb-24 text-day">
+      <header className="flex items-center gap-3 border-b border-blackout px-4 py-2">
+        <Link to="/" aria-label="Volver" className={`${SECONDARY_CLASS} min-w-11 shrink-0 text-xl`}>
           ‹
         </Link>
-        <h1 className="text-xl leading-tight font-bold">{detail?.exercises.name ?? "Ejercicio"}</h1>
+        <h1 className="text-2xl leading-tight font-bold">
+          {detail?.exercises.name ?? "Ejercicio"}
+        </h1>
       </header>
 
       {renderBody()}

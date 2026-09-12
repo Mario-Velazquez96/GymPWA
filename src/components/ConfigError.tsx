@@ -5,16 +5,17 @@
  */
 export default function ConfigError() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-slate-900 p-6 text-center text-slate-100">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-cyc-black p-6 text-center text-day">
       <h1 className="text-2xl font-bold">Error de configuración</h1>
-      <p className="max-w-sm text-base text-slate-300">
-        Faltan las variables de entorno <code className="font-mono">VITE_SUPABASE_URL</code> y/o{" "}
-        <code className="font-mono">VITE_SUPABASE_ANON_KEY</code>.
+      <p className="max-w-sm text-base text-day/90">
+        Faltan las variables de entorno{" "}
+        <code className="font-mono text-dawn-rose">VITE_SUPABASE_URL</code> y/o{" "}
+        <code className="font-mono text-dawn-rose">VITE_SUPABASE_ANON_KEY</code>.
       </p>
-      <p className="max-w-sm text-sm text-slate-400">
-        Copia <code className="font-mono">.env.example</code> a{" "}
-        <code className="font-mono">.env.local</code>, completa los valores y vuelve a cargar la
-        app.
+      <p className="max-w-sm text-sm text-day/60">
+        Copia <code className="font-mono text-dawn-rose">.env.example</code> a{" "}
+        <code className="font-mono text-dawn-rose">.env.local</code>, completa los valores y vuelve
+        a cargar la app.
       </p>
     </main>
   );

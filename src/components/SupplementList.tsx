@@ -14,12 +14,12 @@ function doseLine(supplement: DietSupplement): string {
 function SupplementItem({ supplement }: { supplement: DietSupplement }) {
   const line = doseLine(supplement);
   return (
-    <li className="flex gap-3 rounded-xl bg-slate-800 p-3">
+    <li className="flex gap-3 border-b border-blackout py-3">
       {supplement.recomendado ? (
         <span
           role="img"
           aria-label="Recomendado"
-          className="mt-0.5 shrink-0 text-lg leading-none font-bold text-emerald-400"
+          className="flex size-6 shrink-0 items-center justify-center bg-day text-sm font-bold text-cyc-black"
         >
           ✓
         </span>
@@ -27,16 +27,16 @@ function SupplementItem({ supplement }: { supplement: DietSupplement }) {
         <span
           role="img"
           aria-label="No recomendado"
-          className="mt-0.5 shrink-0 text-lg leading-none font-bold text-red-400"
+          className="flex size-6 shrink-0 items-center justify-center text-lg leading-none font-bold text-cue-fault"
         >
           ✕
         </span>
       )}
       <div className="flex min-w-0 flex-col gap-0.5">
-        <p className="font-semibold text-slate-50">{supplement.nombre}</p>
-        {line !== "" && <p className="text-sm text-slate-300">{line}</p>}
+        <p className="font-bold text-day">{supplement.nombre}</p>
+        {line !== "" && <p className="text-sm text-day/60">{line}</p>}
         {supplement.nota !== null && supplement.nota !== "" && (
-          <p className="text-sm text-slate-400">{supplement.nota}</p>
+          <p className="text-sm text-day/60">{supplement.nota}</p>
         )}
       </div>
     </li>
@@ -54,11 +54,11 @@ function Group({ id, title, items }: GroupProps) {
     return null;
   }
   return (
-    <div className="flex flex-col gap-2">
-      <h3 id={id} className="text-base font-semibold text-slate-200">
+    <div className="flex flex-col">
+      <h3 id={id} className="pt-3 text-xs font-bold tracking-plot text-day/60 uppercase">
         {title}
       </h3>
-      <ul aria-labelledby={id} className="flex flex-col gap-2">
+      <ul aria-labelledby={id} className="flex flex-col">
         {items.map((supplement) => (
           <SupplementItem key={supplement.id} supplement={supplement} />
         ))}
@@ -70,7 +70,8 @@ function Group({ id, title, items }: GroupProps) {
 /**
  * Suplementos en dos grupos por `recomendado` (R13), cada uno en orden de
  * `position` (ya ordenados por el service). Un grupo vacío se omite; sin
- * suplementos, la sección entera se omite.
+ * suplementos, la sección entera se omite. La marca ✓ es un cuadro de día;
+ * la ✕ va en rojo de cue, siempre con su nombre accesible (14 R23).
  */
 export default function SupplementList({ supplements }: SupplementListProps) {
   if (supplements.length === 0) {
@@ -81,8 +82,8 @@ export default function SupplementList({ supplements }: SupplementListProps) {
   const notWorth = supplements.filter((supplement) => !supplement.recomendado);
 
   return (
-    <section aria-labelledby="suplementos" className="flex flex-col gap-3">
-      <h2 id="suplementos" className="text-xl font-semibold text-slate-100">
+    <section aria-labelledby="suplementos" className="flex flex-col">
+      <h2 id="suplementos" className="border-b border-blackout py-2 text-lg font-bold text-day">
         Suplementos
       </h2>
       <Group id="suplementos-recomendados" title="Recomendados" items={recommended} />

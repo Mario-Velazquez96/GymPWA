@@ -1,1 +1,105 @@
 @import "tailwindcss";
+
+/* Tokens del mundo visual (14_ui_redesign_cyclorama). Todo el color de la app
+   vive aquí: los componentes solo usan las utilidades que Tailwind v4 genera
+   de estos nombres (bg-cyc-black, text-day/90, border-blackout, bg-horizon…). */
+@theme {
+  --color-cyc-black: #050505;
+  --color-horizon-cobalt: #0a33ff;
+  --color-horizon-rose: #ff6aae;
+  --color-dawn-rose: #ffc1d6;
+  --color-day-wash: #f7f5ff;
+  --color-day: #ffffff;
+  --color-blackout: #3a3a3a;
+  --color-cue-fault: #e0342c;
+
+  /* Único degradado del mundo: horizonte vertical cobalto → rosa. */
+  --background-image-horizon: linear-gradient(
+    to bottom,
+    var(--color-horizon-cobalt),
+    var(--color-horizon-rose)
+  );
+
+  --tracking-plot: 0.08em;
+  --sweep-duration: 200ms;
+  --ease-sweep: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Superficies del navegador: lo que no dibujamos también lleva el mundo. */
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html,
+  body {
+    background-color: var(--color-cyc-black);
+    color: var(--color-day);
+  }
+  ::selection {
+    background-color: var(--color-horizon-rose);
+    color: var(--color-cyc-black);
+  }
+  input,
+  textarea {
+    caret-color: var(--color-horizon-rose);
+    accent-color: var(--color-horizon-cobalt);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-horizon-rose);
+    outline-offset: 2px;
+  }
+}
+
+/* Filo de horizonte de 3 px: marca "activo / en curso" (fila activa, pestaña
+   activa, sesión más reciente, ventana abierta). */
+@utility horizon-edge-l {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 3px;
+    background-image: var(--background-image-horizon);
+  }
+}
+@utility horizon-edge-t {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 3px;
+    /* Mismos dos colores tendidos a lo largo del filo: en 3 px de alto un
+       degradado vertical sería un solo color. */
+    background-image: linear-gradient(
+      to right,
+      var(--color-horizon-cobalt),
+      var(--color-horizon-rose)
+    );
+  }
+}
+
+/* Barrido de amanecer: la mitad blanca de un degradado duro (no visible como
+   degradado: es una máscara de posición) sube desde abajo en 200 ms cuando el
+   elemento gana `dawn-sweep-day`. --sweep-pos evita depender del orden de las
+   dos utilidades en el CSS. Un elemento que monta ya en día no anima. */
+@utility dawn-sweep {
+  --sweep-pos: 0 0;
+  background-color: var(--color-cyc-black);
+  background-image: linear-gradient(to top, var(--color-day) 50%, transparent 50%);
+  background-size: 100% 200%;
+  background-position: var(--sweep-pos);
+  transition:
+    background-position var(--sweep-duration) var(--ease-sweep),
+    color var(--sweep-duration) var(--ease-sweep),
+    border-color var(--sweep-duration) var(--ease-sweep);
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+@utility dawn-sweep-day {
+  --sweep-pos: 0 100%;
+  color: var(--color-cyc-black);
+}

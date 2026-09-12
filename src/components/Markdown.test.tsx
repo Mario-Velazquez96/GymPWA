@@ -53,3 +53,15 @@ describe("Markdown (R15)", () => {
     expect(container.textContent).toBe("");
   });
 });
+
+describe("Markdown — 14 ciclorama (R24)", () => {
+  it("el contenedor usa los tokens del mundo y la tabla sigue deslizable", () => {
+    const source = ["| Día | Comida |", "| --- | --- |", "| Lunes | Pollo |"].join("\n");
+    const { container } = render(<Markdown source={source} />);
+
+    const root = container.firstElementChild;
+    expect(root).toHaveClass("text-day/90", "[&_strong]:text-day", "[&_tr]:border-blackout");
+    expect(root).toHaveClass("[&_th]:tracking-plot", "[&_th]:uppercase");
+    expect(screen.getByRole("table").parentElement).toHaveClass("overflow-x-auto");
+  });
+});

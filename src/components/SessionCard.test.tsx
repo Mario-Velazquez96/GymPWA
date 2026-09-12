@@ -86,3 +86,32 @@ describe("SessionCard — unidad de lectura (08 R6, R12, R15)", () => {
     ]);
   });
 });
+
+describe("SessionCard — 14 ciclorama: lo hecho es de día (R19)", () => {
+  it("latest: banda de día pleno con filo de horizonte y data-latest=true", () => {
+    render(<SessionCard date="2026-08-03" sets={[makeLog()]} latest />);
+
+    const article = screen.getByRole("article");
+    expect(article).toHaveAttribute("data-latest", "true");
+    expect(article).toHaveClass("bg-day", "horizon-edge-l", "text-cyc-black");
+    expect(article).not.toHaveClass("bg-day-wash");
+  });
+
+  it("sin latest (default): banda day-wash sin filo, misma tinta negra", () => {
+    render(<SessionCard date="2026-08-03" sets={[makeLog()]} />);
+
+    const article = screen.getByRole("article");
+    expect(article).toHaveAttribute("data-latest", "false");
+    expect(article).toHaveClass("bg-day-wash", "text-cyc-black");
+    expect(article).not.toHaveClass("horizon-edge-l");
+    expect(article).not.toHaveClass("bg-day");
+  });
+
+  it("las series son numerales tabulares grandes y el texto sigue intacto", () => {
+    render(<SessionCard date="2026-08-03" sets={[makeLog({ weight_kg: 40, reps: 5 })]} latest />);
+
+    const set = screen.getByText("Serie 1 — 40 kg × 5");
+    expect(set).toHaveClass("text-lg", "font-semibold", "tabular-nums");
+    expect(screen.getByRole("heading", { name: "lun 3 ago 2026" })).toHaveClass("font-bold");
+  });
+});

@@ -33,24 +33,30 @@ function describeState(state: WindowState): string {
   }
 }
 
+/** Fase literal de la ventana (14 R22, decisión B): antes = noche, dentro = día, después = apagón. */
+type WindowPhase = "night" | "day" | "blackout" | "none";
+
+const PHASE: Record<WindowState["kind"], { phase: WindowPhase; className: string }> = {
+  antes: { phase: "night", className: "border-2 border-day bg-cyc-black text-day" },
+  dentro: { phase: "day", className: "dawn-sweep dawn-sweep-day horizon-edge-l" },
+  despues: { phase: "blackout", className: "bg-blackout text-day/90" },
+  sin_ventana: { phase: "none", className: "border border-blackout bg-cyc-black text-day/60" },
+};
+
 /**
  * Ventana de alimentación y su estado ahora mismo (R8, R9). Presentacional:
- * no lee el reloj — el estado llega calculado por `getWindowState`.
+ * no lee el reloj — el estado llega calculado por `getWindowState`. El texto
+ * siempre dice el estado; la fase visual solo lo acompaña.
  */
 export default function EatingWindow({ plan, state }: EatingWindowProps) {
   const hasWindow =
     state.kind !== "sin_ventana" && plan.ventana_inicio !== null && plan.ventana_fin !== null;
 
-  const tone =
-    state.kind === "dentro"
-      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-      : state.kind === "sin_ventana"
-        ? "border-slate-700 bg-slate-800 text-slate-300"
-        : "border-amber-500/40 bg-amber-500/10 text-amber-200";
+  const { phase, className } = PHASE[state.kind];
 
   return (
-    <section aria-labelledby="ventana" className={`rounded-xl border p-3 ${tone}`}>
-      <h2 id="ventana" className="text-base font-semibold">
+    <section aria-labelledby="ventana" data-phase={phase} className={`px-4 py-3 ${className}`}>
+      <h2 id="ventana" className="text-base font-bold">
         {hasWindow
           ? `Ventana de alimentación ${formatHora(plan.ventana_inicio ?? "")}–${formatHora(plan.ventana_fin ?? "")}`
           : "Este plan no tiene ventana de ayuno"}

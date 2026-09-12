@@ -95,3 +95,31 @@ describe("SupplementList (R13)", () => {
     expect(screen.queryByText("Suplementos")).not.toBeInTheDocument();
   });
 });
+
+describe("SupplementList — 14 ciclorama (R23)", () => {
+  it("✓ es un cuadro de día de 24 px y ✕ va en rojo de cue, con sus nombres accesibles", () => {
+    render(<SupplementList supplements={[recomendado, noRecomendado]} />);
+
+    const yes = screen.getByRole("img", { name: "Recomendado" });
+    expect(yes).toHaveTextContent("✓");
+    expect(yes).toHaveClass("size-6", "bg-day", "text-cyc-black", "font-bold");
+
+    const no = screen.getByRole("img", { name: "No recomendado" });
+    expect(no).toHaveTextContent("✕");
+    expect(no).toHaveClass("text-cue-fault", "font-bold");
+    expect(no).not.toHaveClass("bg-day");
+  });
+
+  it("los grupos son kickers y cada renglón una banda con costura de apagón", () => {
+    render(<SupplementList supplements={[recomendado]} />);
+
+    expect(screen.getByRole("heading", { level: 3, name: "Recomendados" })).toHaveClass(
+      "tracking-plot",
+      "uppercase",
+      "text-day/60",
+    );
+    const item = within(screen.getByRole("list", { name: "Recomendados" })).getByRole("listitem");
+    expect(item).toHaveClass("border-b", "border-blackout");
+    expect(item.className).not.toMatch(/rounded|bg-/);
+  });
+});
